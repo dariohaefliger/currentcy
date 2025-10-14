@@ -1,4 +1,4 @@
-# currentcy
+# Curren(t)cy
 
 A new Flutter project.
 
