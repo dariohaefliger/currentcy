@@ -7,7 +7,7 @@ class ChartsHistory extends StatelessWidget {
   Widget build(BuildContext context) => Scaffold(
     body: Container(
       color: Colors.lightGreen,
-      child: Text(
+      child: const Text(
         'Charts and History Content',
         style: TextStyle(
           fontSize: 32,

@@ -11,7 +11,7 @@ class _SingleConvState extends State<SingleConv> {
   final TextEditingController fromController = TextEditingController(text: '12.50');
   final TextEditingController toController = TextEditingController(text: '13.38');
 
-  // Mock-Werte müssen durch API ersetzt werden.
+  // Beispielhafte Wechselkurse (Mock-Daten)
   Map<String, double> mockRates = {
     'CHF': 1.0,
     'EUR': 1.07,
@@ -25,7 +25,6 @@ class _SingleConvState extends State<SingleConv> {
   @override
   void initState() {
     super.initState();
-    // Wenn der Benutzer den Betrag ändert, berechne Mock-Konvertierung
     fromController.addListener(_onFromAmountChanged);
   }
 
@@ -37,8 +36,8 @@ class _SingleConvState extends State<SingleConv> {
     super.dispose();
   }
 
+  // Betragseingabe -> Zielwert berechnen
   void _onFromAmountChanged() {
-    // Nimmt sowohl Komma als auch Punkt entgegen.
     final text = fromController.text.replaceAll(',', '.');
     final value = double.tryParse(text);
     if (value == null) {
@@ -47,19 +46,16 @@ class _SingleConvState extends State<SingleConv> {
     }
     final rate = _getRate(fromCurrency, toCurrency);
     final converted = value * rate;
-    // Formatieren auf 2 Nachkommastellen
     toController.text = converted.toStringAsFixed(2);
   }
 
   double _getRate(String from, String to) {
     final fromRate = mockRates[from] ?? 1.0;
     final toRate = mockRates[to] ?? 1.0;
-    // Beispiel: rate von "from" zu "to"
     return toRate / fromRate;
   }
 
   void _swapCurrencies() {
-    // Swap-Button: Tauscht beide Beträge und Währungen
     setState(() {
       final oldFrom = fromCurrency;
       fromCurrency = toCurrency;
@@ -71,9 +67,25 @@ class _SingleConvState extends State<SingleConv> {
     });
   }
 
-// Auswahlliste der Währungen:
+  // Snackbar beim Synchronisieren
+  void _onSynchronizePressed() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Synchronize: Rates updated')),
+    );
+  }
+
+  // Snackbar bei falscher Eingabe
+  void _onRightButtonPressed() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Please enter your input into the left box.'),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  // Währungsauswahl via BottomSheet
   Future<void> _showCurrencyPicker({required bool isFrom}) async {
-    // Beispiel-Liste: Muss erweitert werden durch Angebote aus API
     final currencies = ['CHF', 'EUR', 'USD', 'GBP', 'JPY', 'AUD', 'CAD'];
     final selected = await showModalBottomSheet<String>(
       context: context,
@@ -88,7 +100,7 @@ class _SingleConvState extends State<SingleConv> {
                 child: Container(
                   height: 40,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
+                    color: Colors.black,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Center(child: Text('Select currency')),
@@ -101,12 +113,10 @@ class _SingleConvState extends State<SingleConv> {
                   itemBuilder: (context, index) {
                     final code = currencies[index];
                     return ListTile(
-                      leading: _buildFlagPlaceholder(code),
+                      leading: Text(_getFlag(code), style: const TextStyle(fontSize: 28)),
                       title: Text(_currencyFullName(code)),
                       subtitle: Text(code),
-                      onTap: () {
-                        Navigator.of(context).pop(code);
-                      },
+                      onTap: () => Navigator.of(context).pop(code),
                     );
                   },
                 ),
@@ -121,34 +131,36 @@ class _SingleConvState extends State<SingleConv> {
       setState(() {
         if (isFrom) {
           fromCurrency = selected;
-          // Recalculate after currency change:
-          _onFromAmountChanged();
         } else {
           toCurrency = selected;
-          _onFromAmountChanged();
         }
+        _onFromAmountChanged();
       });
     }
   }
 
-  // Platzhalter für Flagge. Benutze Image.asset(...) und lade die entsprechenden SVG/PNG Assets der Flaggen in assets/flags/
-  Widget _buildFlagPlaceholder(String code) {
-    return Container(
-      width: 40,
-      height: 24,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(6),
-        color: Colors.pinkAccent,
-      ),
-      child: Text(
-        code,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
-      ),
-    );
+  // Flaggen-Icons
+  String _getFlag(String code) {
+    switch (code) {
+      case 'CHF':
+        return '🇨🇭';
+      case 'EUR':
+        return '🇪🇺';
+      case 'USD':
+        return '🇺🇸';
+      case 'GBP':
+        return '🇬🇧';
+      case 'JPY':
+        return '🇯🇵';
+      case 'AUD':
+        return '🇦🇺';
+      case 'CAD':
+        return '🇨🇦';
+      default:
+        return '🏳️';
+    }
   }
 
-// Vollständige Liste mit Währungsnamen für obere Auswahlliste.
   String _currencyFullName(String code) {
     switch (code) {
       case 'CHF':
@@ -170,58 +182,34 @@ class _SingleConvState extends State<SingleConv> {
     }
   }
 
-// Funktionsweise des Synchronize-Buttons.
-  void _onSynchronizePressed() {
-    // Hier später den API-Aufruf einbauen.
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Synchronize: Rates updated')),
-    );
-  }
-
-// Verweis auf linkes Eingabefeld, falls das rechte angeklickt wird.
-    void _onRightButtonPressed() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Please enter your input into the left box.'),
-        backgroundColor: Colors.blue,
-        ),
-    );
-  }
-
-// Placement der Widgets
   @override
   Widget build(BuildContext context) {
-
-    // Zahlenfelder
-
-    // Links
-    final fieldDecorationLinks = BoxDecoration(
+    // Stil für die Zahleneingabefelder
+    final fieldDecorationLeft = BoxDecoration(
       color: Colors.white,
       borderRadius: BorderRadius.circular(28),
       border: Border.all(color: Colors.black12),
       boxShadow: [
-        BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+        BoxShadow(color: Colors.black12, blurRadius: 4, offset: const Offset(0, 2)),
       ],
     );
 
-    // Rechts
-        final fieldDecorationRechts = BoxDecoration(
-      color: Colors.grey,
+    final fieldDecorationRight = BoxDecoration(
+      color: Colors.grey.shade300,
       borderRadius: BorderRadius.circular(28),
       border: Border.all(color: Colors.black12),
       boxShadow: [
-        BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+        BoxShadow(color: Colors.black12, blurRadius: 4, offset: const Offset(0, 2)),
       ],
     );
 
-    return SingleChildScrollView(
-      // damit auf kleinen Bildschirmen alles scrollt, wenn Keyboard sichtbar ist.
-      child: Padding(
+    return Scaffold(
+      backgroundColor: Colors.white,
+
+      body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-
-          // Instructions-Text über den Feldern
           children: [
             const SizedBox(height: 6),
             const Text(
@@ -235,25 +223,24 @@ class _SingleConvState extends State<SingleConv> {
             ),
             const SizedBox(height: 20),
 
-            // Oberer Bereich: Zahlenwerte
+            // Zahlenfelder (Eingabe & Ausgabe)
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Linker Input
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: fieldDecorationLinks,
+                    decoration: fieldDecorationLeft,
                     child: TextField(
                       controller: fromController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
                       decoration: const InputDecoration.collapsed(hintText: ''),
                     ),
                   ),
                 ),
 
-                // Swap-Button in der Mitte
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10.0),
                   child: Column(
@@ -268,11 +255,10 @@ class _SingleConvState extends State<SingleConv> {
                   ),
                 ),
 
-                // Rechts kein Input möglich. Swap-Button wird vorausgesetzt.
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: fieldDecorationRechts,
+                    decoration: fieldDecorationRight,
                     child: TextField(
                       controller: toController,
                       readOnly: true,
@@ -287,30 +273,34 @@ class _SingleConvState extends State<SingleConv> {
 
             const SizedBox(height: 12),
 
-            // Untere Reihe: Währungswahl für from / to
+            // Währungswahl (Flagge rechts)
             Row(
               children: [
                 Expanded(
                   child: GestureDetector(
                     onTap: () => _showCurrencyPicker(isFrom: true),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(color: Colors.black12),
                       ),
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildFlagPlaceholder(fromCurrency),
-                          const SizedBox(width: 10),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(fromCurrency, style: const TextStyle(fontWeight: FontWeight.bold)),
-                              Text(_currencyFullName(fromCurrency), style: const TextStyle(fontSize: 12)),
+                              Text(fromCurrency,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold, fontSize: 16)),
+                              Text(_currencyFullName(fromCurrency),
+                                  style: const TextStyle(fontSize: 12)),
                             ],
                           ),
+                          Text(_getFlag(fromCurrency),
+                              style: const TextStyle(fontSize: 26)),
                         ],
                       ),
                     ),
@@ -321,23 +311,27 @@ class _SingleConvState extends State<SingleConv> {
                   child: GestureDetector(
                     onTap: () => _showCurrencyPicker(isFrom: false),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(color: Colors.black12),
                       ),
                       child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _buildFlagPlaceholder(toCurrency),
-                          const SizedBox(width: 10),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(toCurrency, style: const TextStyle(fontWeight: FontWeight.bold)),
-                              Text(_currencyFullName(toCurrency), style: const TextStyle(fontSize: 12)),
+                              Text(toCurrency,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold, fontSize: 16)),
+                              Text(_currencyFullName(toCurrency),
+                                  style: const TextStyle(fontSize: 12)),
                             ],
                           ),
+                          Text(_getFlag(toCurrency),
+                              style: const TextStyle(fontSize: 26)),
                         ],
                       ),
                     ),
@@ -346,42 +340,9 @@ class _SingleConvState extends State<SingleConv> {
               ],
             ),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 50),
 
-            // Synchronize-Button
-            Center(
-              child: ElevatedButton(
-                onPressed: _onSynchronizePressed,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.yellow[700],
-                  foregroundColor: Colors.black,
-                  padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                  elevation: 4,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Text('synchronize now', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    SizedBox(width: 10),
-                    Icon(Icons.sync),
-                  ],
-                ),
-              ),
-            ),
-
-            // Beschreibung für Synchronize-Button (momentan noch hard-coded)
-            const SizedBox(height: 8),
-            const Center(
-              child: Text(
-                'Last synchronization: 26.10.2025 11:26\nYou may synchronize now to get the most recent exchange rates.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: Colors.black54),
-              ),
-            ),
-
-            const SizedBox(height: 26),
-            // Exakter Wechselkurs zuunterst.
+            // Wechselkursanzeige
             Center(
               child: Text(
                 '1 $fromCurrency = ${_getRate(fromCurrency, toCurrency).toStringAsFixed(6)} $toCurrency',
@@ -389,7 +350,43 @@ class _SingleConvState extends State<SingleConv> {
               ),
             ),
 
-            const SizedBox(height: 50),
+            const SizedBox(height: 120), // Platz über fixiertem Footer
+          ],
+        ),
+      ),
+
+      // Fixierter Footer mit Synchronize-Button
+      bottomNavigationBar: Container(
+        color: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ElevatedButton(
+              onPressed: _onSynchronizePressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.yellow[700],
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                elevation: 4,
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('synchronize now',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  SizedBox(width: 10),
+                  Icon(Icons.sync),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Last synchronization: 26.10.2025 11:26\nYou may synchronize now to get the most recent exchange rates.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            ),
           ],
         ),
       ),

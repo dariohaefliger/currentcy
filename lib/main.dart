@@ -3,6 +3,7 @@ import 'package:currentcy/page/single_conv.dart';
 import 'package:currentcy/page/multi_conv.dart';
 import 'package:currentcy/page/charts_history.dart';
 import 'package:currentcy/settings/settings_main.dart';
+import 'package:currentcy/settings/theme_manager.dart';
 
 void main() {
   runApp(const MyApp());
@@ -12,14 +13,29 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Currentcy',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Currentcy'),
+ Widget build(BuildContext context) {
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeManager.themeModeNotifier,
+      builder: (context, mode, _) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'Currentcy',
+          themeMode: mode,
+          theme: ThemeData.from(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.deepPurple,
+              brightness: Brightness.light,
+            ),
+          ),
+          darkTheme: ThemeData.from(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: Colors.deepPurple,
+              brightness: Brightness.dark,
+            ),
+          ),
+          home: const MyHomePage(title: 'Currentcy'),
+        );
+      },
     );
   }
 }
@@ -73,7 +89,7 @@ class _MyHomePageState extends State<MyHomePage> {
             icon: const Icon(Icons.settings, size: 40, color: Colors.white),
           ),
         ],
-        bottom: TabBar(
+        bottom: const TabBar(
           tabs: [
             Tab(text: 'Single-Conv.', icon: Icon(Icons.currency_bitcoin)),
             Tab(text: 'Multi-Conv.', icon: Icon(Icons.currency_exchange)),
@@ -81,7 +97,7 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         ),
       ),
-      body: TabBarView(children: [SingleConv(), MultiConv(), ChartsHistory()]),
+      body: const TabBarView(children: [SingleConv(), MultiConv(), ChartsHistory()]),
     ),
   );
 }
