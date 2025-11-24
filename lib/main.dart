@@ -19,7 +19,7 @@ class MyApp extends StatelessWidget {
       builder: (context, mode, _) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'Curren(t)cy',
+          title: 'Currentcy',
           themeMode: mode,
           theme: ThemeData.from(
             colorScheme: ColorScheme.fromSeed(
@@ -54,7 +54,7 @@ class _MyHomePageState extends State<MyHomePage> {
     length: 3,
     child: Scaffold(
       appBar: AppBar(
-        title: const Text('Curren(t)cy'),
+        title: const Text('Currentcy'),
         //backgroundColor: Colors.white70,
         centerTitle: false,
         actions: [

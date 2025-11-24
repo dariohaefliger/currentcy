@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:currentcy/settings/theme_manager.dart';
 import 'package:currentcy/settings/settings_manager.dart';
 import 'package:currentcy/services/currency_repository.dart';
+import 'package:currentcy/settings/exchange_rates_info.dart';
 
 class Settings extends StatefulWidget {
   const Settings({super.key});
@@ -66,7 +67,7 @@ class _SettingsState extends State<Settings> {
   }
 
   // --------------------------
-  // FAVOURITE PICKER
+  // FAVOURITE PICKER (FLOATING SHEET)
   // --------------------------
 
   Future<void> _pickFavoriteCurrency(int index) async {
@@ -88,6 +89,8 @@ class _SettingsState extends State<Settings> {
                 name.contains(query);
           }).toList();
         }
+
+        applyFilter('');
 
         return Align(
           alignment: Alignment.bottomCenter,
@@ -124,8 +127,8 @@ class _SettingsState extends State<Settings> {
 
                         // Search field
                         Padding(
-                          padding:
-                              const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                          padding: const EdgeInsets.fromLTRB(
+                              16, 0, 16, 8),
                           child: TextField(
                             controller: searchController,
                             decoration: const InputDecoration(
@@ -264,15 +267,34 @@ class _SettingsState extends State<Settings> {
                 _buildFavouriteTile(2),
                 const SizedBox(height: 24),
 
-                // ===== Exchange Rates API =====
-                const Text(
-                  'ExchangeRates API',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                // ===== Exchange Rates API (mit Info-Icon rechts) =====
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'ExchangeRates API',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.info_outline),
+                      tooltip: 'How to set up the API',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) =>
+                                const ExchangeRatesInfoPage(),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
+
                 SwitchListTile(
                   title: const Text('Use mock rates'),
                   subtitle: const Text(
@@ -303,6 +325,7 @@ class _SettingsState extends State<Settings> {
                   'Disable "Use mock rates" to fetch live exchange rates using this key.',
                   style: TextStyle(
                     fontSize: 12,
+                    color: Colors.black54,
                   ),
                 ),
               ],
