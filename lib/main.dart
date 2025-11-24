@@ -23,13 +23,13 @@ class MyApp extends StatelessWidget {
           themeMode: mode,
           theme: ThemeData.from(
             colorScheme: ColorScheme.fromSeed(
-              seedColor: Colors.deepPurple,
+              seedColor: Colors.white,
               brightness: Brightness.light,
             ),
           ),
           darkTheme: ThemeData.from(
             colorScheme: ColorScheme.fromSeed(
-              seedColor: Colors.deepPurple,
+              seedColor: Colors.white,
               brightness: Brightness.dark,
             ),
           ),
@@ -55,7 +55,7 @@ class _MyHomePageState extends State<MyHomePage> {
     child: Scaffold(
       appBar: AppBar(
         title: const Text('Curren(t)cy'),
-        backgroundColor: Colors.grey,
+        //backgroundColor: Colors.white70,
         centerTitle: false,
         actions: [
           IconButton(
@@ -86,7 +86,9 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               );
             },
-            icon: const Icon(Icons.settings, size: 40, color: Colors.white),
+            icon: const Icon(Icons.settings, size: 40, 
+            //color: Colors.black
+            ),
           ),
         ],
         bottom: const TabBar(

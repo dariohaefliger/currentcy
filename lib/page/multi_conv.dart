@@ -271,7 +271,7 @@ class _MultiConvState extends State<MultiConv>
                           return ListTile(
                             leading: Text(
                               flag,
-                              style: const TextStyle(fontSize: 28),
+                              style: const TextStyle(fontSize: 28, color: Colors.black),
                             ),
                             title: Text(name),
                             subtitle: Text(code),
@@ -335,7 +335,9 @@ class _MultiConvState extends State<MultiConv>
           keyboardType:
               const TextInputType.numberWithOptions(decimal: true),
           textAlign: TextAlign.right,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, 
+          color: Colors.black
+          ),
           decoration: const InputDecoration.collapsed(hintText: ''),
         ),
       ),
@@ -402,19 +404,19 @@ class _MultiConvState extends State<MultiConv>
                       code,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 14),
+                          fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black),
                     ),
                     Text(
                       name,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11),
+                      style: const TextStyle(fontSize: 11, color: Colors.black),
                     ),
                   ],
                 ),
               ),
               Text(
                 flag,
-                style: const TextStyle(fontSize: 20),
+                style: const TextStyle(fontSize: 20, color: Colors.black),
               ),
             ],
           ),
@@ -457,7 +459,9 @@ class _MultiConvState extends State<MultiConv>
               const Text(
                 'Edit the top amount. Pick currencies for each row. Use the rotate button to rotate currencies & amounts clockwise.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: Colors.black54),
+                style: TextStyle(fontSize: 13, 
+                //color: Colors.black54
+                ),
               ),
               const SizedBox(height: 22),
 
@@ -475,7 +479,9 @@ class _MultiConvState extends State<MultiConv>
                 ),
                 child: IconButton(
                   icon: const Icon(Icons.refresh,
-                      size: 36, color: Colors.black54),
+                      size: 36, 
+                      //color: Colors.black54
+                      ),
                   onPressed: _rotateClockwise,
                 ),
               ),
@@ -495,7 +501,7 @@ class _MultiConvState extends State<MultiConv>
 
       // Footer with sync button & info
       bottomNavigationBar: Container(
-        color: Colors.white,
+        //color: Colors.white,
         padding:
             const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         child: Column(
@@ -542,7 +548,9 @@ class _MultiConvState extends State<MultiConv>
               _formatLastSyncText(),
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  fontSize: 12, color: Colors.black54),
+                  fontSize: 12, 
+                  //color: Colors.black54
+                  ),
             ),
           ],
         ),

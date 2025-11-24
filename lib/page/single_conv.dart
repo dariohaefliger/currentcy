@@ -302,7 +302,7 @@ class _SingleConvState extends State<SingleConv> {
     final toName = CurrencyRepository.nameFor(toCurrency);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      //backgroundColor: Colors.white,
       body: SingleChildScrollView(
         padding:
             const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -320,7 +320,9 @@ class _SingleConvState extends State<SingleConv> {
             const Text(
               'Tap on the fields below to change the amount and currency.',
               style:
-                  TextStyle(fontSize: 16, color: Colors.black54),
+                  TextStyle(fontSize: 16, 
+                  //color: Colors.black54
+                  ),
             ),
 
             const SizedBox(height: 20),
@@ -339,7 +341,9 @@ class _SingleConvState extends State<SingleConv> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: Colors.black12),
+                      border: Border.all(
+                        color: Colors.black12
+                        ),
                       boxShadow: const [
                         BoxShadow(
                           color: Colors.black12,
@@ -354,7 +358,7 @@ class _SingleConvState extends State<SingleConv> {
                           const TextInputType.numberWithOptions(
                               decimal: true),
                       style: const TextStyle(
-                          fontSize: 26, fontWeight: FontWeight.bold),
+                          fontSize: 26, fontWeight: FontWeight.bold, color: Colors.black),
                       decoration:
                           const InputDecoration.collapsed(hintText: ''),
                     ),
@@ -384,9 +388,11 @@ class _SingleConvState extends State<SingleConv> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
+                      color: const Color.fromARGB(255, 116, 115, 115),
                       borderRadius: BorderRadius.circular(28),
-                      border: Border.all(color: Colors.black12),
+                      border: Border.all(
+                        color: Colors.black12
+                        ),
                       boxShadow: const [
                         BoxShadow(
                           color: Colors.black12,
@@ -400,7 +406,7 @@ class _SingleConvState extends State<SingleConv> {
                       readOnly: true,
                       onTap: _onRightButtonPressed,
                       style: const TextStyle(
-                          fontSize: 26, fontWeight: FontWeight.bold),
+                          fontSize: 26, fontWeight: FontWeight.bold, color: Colors.black),
                       decoration:
                           const InputDecoration.collapsed(hintText: ''),
                     ),
@@ -429,7 +435,9 @@ class _SingleConvState extends State<SingleConv> {
                         color: Colors.white,
                         borderRadius:
                             BorderRadius.circular(24),
-                        border: Border.all(color: Colors.black12),
+                        border: Border.all(
+                          color: Colors.black12
+                          ),
                       ),
                       child: Row(
                         mainAxisAlignment:
@@ -447,6 +455,7 @@ class _SingleConvState extends State<SingleConv> {
                                       TextOverflow.ellipsis,
                                   softWrap: false,
                                   style: const TextStyle(
+                                    color: Colors.black,
                                       fontWeight:
                                           FontWeight.bold,
                                       fontSize: 16),
@@ -458,6 +467,7 @@ class _SingleConvState extends State<SingleConv> {
                                       TextOverflow.ellipsis,
                                   softWrap: false,
                                   style: const TextStyle(
+                                    color: Colors.black,
                                       fontSize: 12),
                                 ),
                               ],
@@ -467,7 +477,7 @@ class _SingleConvState extends State<SingleConv> {
                             CurrencyRepository.flagFor(
                                 fromCurrency),
                             style:
-                                const TextStyle(fontSize: 26),
+                                const TextStyle(fontSize: 26, color: Colors.black),
                           ),
                         ],
                       ),
@@ -507,6 +517,7 @@ class _SingleConvState extends State<SingleConv> {
                                       TextOverflow.ellipsis,
                                   softWrap: false,
                                   style: const TextStyle(
+                                    color: Colors.black,
                                       fontWeight:
                                           FontWeight.bold,
                                       fontSize: 16),
@@ -518,6 +529,7 @@ class _SingleConvState extends State<SingleConv> {
                                       TextOverflow.ellipsis,
                                   softWrap: false,
                                   style: const TextStyle(
+                                    color: Colors.black,
                                       fontSize: 12),
                                 ),
                               ],
@@ -527,7 +539,7 @@ class _SingleConvState extends State<SingleConv> {
                             CurrencyRepository.flagFor(
                                 toCurrency),
                             style:
-                                const TextStyle(fontSize: 26),
+                                const TextStyle(fontSize: 26, color: Colors.black),
                           ),
                         ],
                       ),
@@ -543,7 +555,9 @@ class _SingleConvState extends State<SingleConv> {
               child: Text(
                 rateText,
                 style: const TextStyle(
-                    fontSize: 13, color: Colors.black87),
+                    fontSize: 13, 
+                    // color: Colors.black87
+                    ),
               ),
             ),
 
@@ -553,7 +567,7 @@ class _SingleConvState extends State<SingleConv> {
       ),
 
       bottomNavigationBar: Container(
-        color: Colors.white,
+        //color: Colors.white,
         padding:
             const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         child: Column(
@@ -584,6 +598,7 @@ class _SingleConvState extends State<SingleConv> {
                             ? 'synchronizing...'
                             : 'synchronize now'),
                     style: const TextStyle(
+                      color: Colors.black,
                         fontSize: 18,
                         fontWeight: FontWeight.bold),
                   ),
@@ -605,7 +620,9 @@ class _SingleConvState extends State<SingleConv> {
               _formatLastSyncText(),
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  fontSize: 12, color: Colors.black54),
+                  fontSize: 12, 
+                  //color: Colors.black54
+                  ),
             ),
           ],
         ),
