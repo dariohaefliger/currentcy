@@ -18,6 +18,9 @@ class _SingleConvState extends State<SingleConv> {
   Map<String, double> _rates = {};
   List<String> _currencyOptions = [];
 
+  // favourites (codes) for the picker
+  List<String> _favoriteCurrencies = [];
+
   String fromCurrency = 'CHF';
   String toCurrency = 'EUR';
 
@@ -40,6 +43,11 @@ class _SingleConvState extends State<SingleConv> {
     final rates = CurrencyRepository.getRates(useMock);
     final options = CurrencyRepository.getCurrencyCodes(useMock);
 
+    // load favourites
+    final favs = await SettingsManager.loadFavoriteCurrencies();
+    final validFavs =
+        favs.where((c) => options.contains(c)).toList();
+
     String newFrom = fromCurrency;
     String newTo = toCurrency;
 
@@ -54,6 +62,7 @@ class _SingleConvState extends State<SingleConv> {
       _useMockRates = useMock;
       _rates = rates;
       _currencyOptions = options;
+      _favoriteCurrencies = validFavs;
       fromCurrency = newFrom;
       toCurrency = newTo;
       _lastSync = CurrencyRepository.lastSync;
@@ -118,7 +127,8 @@ class _SingleConvState extends State<SingleConv> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-              'Mock mode is enabled. Disable it in Settings to fetch live rates.'),
+            'Mock mode is enabled. Disable it in Settings to fetch live rates.',
+          ),
         ),
       );
       return;
@@ -133,7 +143,7 @@ class _SingleConvState extends State<SingleConv> {
       if (!options.contains(fromCurrency)) {
         fromCurrency = options.first;
       }
-      if (!options.contains(toCurrency)) {
+      if (!options.contains(toCurrency) && options.length > 1) {
         toCurrency = options[1];
       }
 
@@ -173,72 +183,160 @@ class _SingleConvState extends State<SingleConv> {
     final selected = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
         final searchController = TextEditingController();
-        List<String> filtered = List.of(_currencyOptions);
+
+        // base lists
+        List<String> favBase = _favoriteCurrencies
+            .where((c) => _currencyOptions.contains(c))
+            .toList();
+        List<String> othersBase = _currencyOptions
+            .where((c) => !favBase.contains(c))
+            .toList();
+
+        // filtered lists
+        List<String> favFiltered = List.of(favBase);
+        List<String> othersFiltered = List.of(othersBase);
 
         void applyFilter(String q) {
           final query = q.toLowerCase();
-          filtered = _currencyOptions.where((code) {
-            final name = CurrencyRepository.nameFor(code).toLowerCase();
-            return code.toLowerCase().contains(query) ||
-                name.contains(query);
-          }).toList();
+          if (query.isEmpty) {
+            favFiltered = List.of(favBase);
+            othersFiltered = List.of(othersBase);
+          } else {
+            bool matches(String code) {
+              final name =
+                  CurrencyRepository.nameFor(code).toLowerCase();
+              return code.toLowerCase().contains(query) ||
+                  name.contains(query);
+            }
+
+            favFiltered =
+                favBase.where(matches).toList();
+            othersFiltered =
+                othersBase.where(matches).toList();
+          }
         }
 
-        return SafeArea(
-          child: StatefulBuilder(
-            builder: (context, setSheetState) {
-              return Padding(
-                padding: EdgeInsets.only(
-                    bottom: MediaQuery.of(context).viewInsets.bottom),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // SEARCH FIELD
-                    Padding(
-                      padding:
-                          const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                      child: TextField(
-                        controller: searchController,
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          hintText: 'Search currency (code or name)',
-                          border: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.all(Radius.circular(12)),
+        // initial state without filter
+        applyFilter('');
+
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            margin: const EdgeInsets.only(top: 70),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: StatefulBuilder(
+                builder: (context, setModalState) {
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      bottom: MediaQuery.of(context).viewInsets.bottom,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Grabber
+                        Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(
+                              top: 8, bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[400],
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
-                        onChanged: (value) {
-                          setSheetState(() => applyFilter(value));
-                        },
-                      ),
-                    ),
 
-                    // LIST
-                    Flexible(
-                      child: ListView.builder(
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final code = filtered[index];
-                          final flag = CurrencyRepository.flagFor(code);
-                          final name = CurrencyRepository.nameFor(code);
+                        // Search field
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                              16, 0, 16, 8),
+                          child: TextField(
+                            controller: searchController,
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(Icons.search),
+                              hintText:
+                                  'Search currency (code or name)',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.all(
+                                    Radius.circular(12)),
+                              ),
+                            ),
+                            onChanged: (value) {
+                              setModalState(() {
+                                applyFilter(value);
+                              });
+                            },
+                          ),
+                        ),
 
-                          return ListTile(
-                            leading: Text(flag,
-                                style: const TextStyle(fontSize: 28)),
-                            title: Text(name),
-                            subtitle: Text(code),
-                            onTap: () =>
-                                Navigator.of(context).pop(code),
-                          );
-                        },
-                      ),
+                        // Favs + Divider + Others as one list
+                        Flexible(
+                          child: ListView(
+                            shrinkWrap: true,
+                            children: [
+                              if (favFiltered.isNotEmpty) ...[
+                                ...favFiltered.map((code) {
+                                  final flag =
+                                      CurrencyRepository.flagFor(code);
+                                  final name =
+                                      CurrencyRepository.nameFor(code);
+                                  return ListTile(
+                                    leading: Text(
+                                      flag,
+                                      style: const TextStyle(
+                                          fontSize: 28),
+                                    ),
+                                    title: Text(name),
+                                    subtitle: Text(code),
+                                    trailing: const Text(
+                                      '☆',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                      ),
+                                    ),
+                                    onTap: () =>
+                                        Navigator.of(context)
+                                            .pop(code),
+                                  );
+                                }),
+                                const Divider(),
+                              ],
+                              ...othersFiltered.map((code) {
+                                final flag =
+                                    CurrencyRepository.flagFor(code);
+                                final name =
+                                    CurrencyRepository.nameFor(code);
+                                return ListTile(
+                                  leading: Text(
+                                    flag,
+                                    style: const TextStyle(
+                                        fontSize: 28),
+                                  ),
+                                  title: Text(name),
+                                  subtitle: Text(code),
+                                  onTap: () =>
+                                      Navigator.of(context)
+                                          .pop(code),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              );
-            },
+                  );
+                },
+              ),
+            ),
           ),
         );
       },
@@ -263,8 +361,7 @@ class _SingleConvState extends State<SingleConv> {
   void _onRightButtonPressed() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text(
-            'Please enter your input into the left box.'),
+        content: Text('Please enter your input into the left box.'),
         backgroundColor: Colors.blue,
       ),
     );
@@ -302,7 +399,6 @@ class _SingleConvState extends State<SingleConv> {
     final toName = CurrencyRepository.nameFor(toCurrency);
 
     return Scaffold(
-      //backgroundColor: Colors.white,
       body: SingleChildScrollView(
         padding:
             const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
@@ -319,18 +415,12 @@ class _SingleConvState extends State<SingleConv> {
             const SizedBox(height: 8),
             const Text(
               'Tap on the fields below to change the amount and currency.',
-              style:
-                  TextStyle(fontSize: 16, 
-                  //color: Colors.black54
-                  ),
+              style: TextStyle(fontSize: 16),
             ),
 
             const SizedBox(height: 20),
 
-            // --------------------------
             // INPUT ROWS
-            // --------------------------
-
             Row(
               children: [
                 // INPUT LEFT
@@ -341,9 +431,8 @@ class _SingleConvState extends State<SingleConv> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(28),
-                      border: Border.all(
-                        color: Colors.black12
-                        ),
+                      border:
+                          Border.all(color: Colors.black12),
                       boxShadow: const [
                         BoxShadow(
                           color: Colors.black12,
@@ -358,22 +447,25 @@ class _SingleConvState extends State<SingleConv> {
                           const TextInputType.numberWithOptions(
                               decimal: true),
                       style: const TextStyle(
-                          fontSize: 26, fontWeight: FontWeight.bold, color: Colors.black),
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black),
                       decoration:
-                          const InputDecoration.collapsed(hintText: ''),
+                          const InputDecoration.collapsed(
+                              hintText: ''),
                     ),
                   ),
                 ),
 
                 // SWAP BUTTON
                 Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10.0),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10.0),
                   child: Column(
                     children: [
                       IconButton(
-                        icon:
-                            const Icon(Icons.swap_horiz, size: 36),
+                        icon: const Icon(Icons.swap_horiz,
+                            size: 36),
                         onPressed: _swapCurrencies,
                       ),
                       const Text('swap',
@@ -388,11 +480,11 @@ class _SingleConvState extends State<SingleConv> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
-                      color: const Color.fromARGB(255, 116, 115, 115),
+                      color:
+                          const Color.fromARGB(255, 116, 115, 115),
                       borderRadius: BorderRadius.circular(28),
-                      border: Border.all(
-                        color: Colors.black12
-                        ),
+                      border:
+                          Border.all(color: Colors.black12),
                       boxShadow: const [
                         BoxShadow(
                           color: Colors.black12,
@@ -406,9 +498,12 @@ class _SingleConvState extends State<SingleConv> {
                       readOnly: true,
                       onTap: _onRightButtonPressed,
                       style: const TextStyle(
-                          fontSize: 26, fontWeight: FontWeight.bold, color: Colors.black),
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black),
                       decoration:
-                          const InputDecoration.collapsed(hintText: ''),
+                          const InputDecoration.collapsed(
+                              hintText: ''),
                     ),
                   ),
                 ),
@@ -417,10 +512,7 @@ class _SingleConvState extends State<SingleConv> {
 
             const SizedBox(height: 12),
 
-            // --------------------------
             // CURRENCY PICKERS
-            // --------------------------
-
             Row(
               children: [
                 // FROM currency
@@ -435,9 +527,8 @@ class _SingleConvState extends State<SingleConv> {
                         color: Colors.white,
                         borderRadius:
                             BorderRadius.circular(24),
-                        border: Border.all(
-                          color: Colors.black12
-                          ),
+                        border:
+                            Border.all(color: Colors.black12),
                       ),
                       child: Row(
                         mainAxisAlignment:
@@ -455,7 +546,7 @@ class _SingleConvState extends State<SingleConv> {
                                       TextOverflow.ellipsis,
                                   softWrap: false,
                                   style: const TextStyle(
-                                    color: Colors.black,
+                                      color: Colors.black,
                                       fontWeight:
                                           FontWeight.bold,
                                       fontSize: 16),
@@ -467,7 +558,7 @@ class _SingleConvState extends State<SingleConv> {
                                       TextOverflow.ellipsis,
                                   softWrap: false,
                                   style: const TextStyle(
-                                    color: Colors.black,
+                                      color: Colors.black,
                                       fontSize: 12),
                                 ),
                               ],
@@ -476,8 +567,9 @@ class _SingleConvState extends State<SingleConv> {
                           Text(
                             CurrencyRepository.flagFor(
                                 fromCurrency),
-                            style:
-                                const TextStyle(fontSize: 26, color: Colors.black),
+                            style: const TextStyle(
+                                fontSize: 26,
+                                color: Colors.black),
                           ),
                         ],
                       ),
@@ -499,7 +591,8 @@ class _SingleConvState extends State<SingleConv> {
                         color: Colors.white,
                         borderRadius:
                             BorderRadius.circular(24),
-                        border: Border.all(color: Colors.black12),
+                        border:
+                            Border.all(color: Colors.black12),
                       ),
                       child: Row(
                         mainAxisAlignment:
@@ -517,7 +610,7 @@ class _SingleConvState extends State<SingleConv> {
                                       TextOverflow.ellipsis,
                                   softWrap: false,
                                   style: const TextStyle(
-                                    color: Colors.black,
+                                      color: Colors.black,
                                       fontWeight:
                                           FontWeight.bold,
                                       fontSize: 16),
@@ -529,7 +622,7 @@ class _SingleConvState extends State<SingleConv> {
                                       TextOverflow.ellipsis,
                                   softWrap: false,
                                   style: const TextStyle(
-                                    color: Colors.black,
+                                      color: Colors.black,
                                       fontSize: 12),
                                 ),
                               ],
@@ -538,8 +631,9 @@ class _SingleConvState extends State<SingleConv> {
                           Text(
                             CurrencyRepository.flagFor(
                                 toCurrency),
-                            style:
-                                const TextStyle(fontSize: 26, color: Colors.black),
+                            style: const TextStyle(
+                                fontSize: 26,
+                                color: Colors.black),
                           ),
                         ],
                       ),
@@ -554,10 +648,7 @@ class _SingleConvState extends State<SingleConv> {
             Center(
               child: Text(
                 rateText,
-                style: const TextStyle(
-                    fontSize: 13, 
-                    // color: Colors.black87
-                    ),
+                style: const TextStyle(fontSize: 13),
               ),
             ),
 
@@ -567,7 +658,6 @@ class _SingleConvState extends State<SingleConv> {
       ),
 
       bottomNavigationBar: Container(
-        //color: Colors.white,
         padding:
             const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         child: Column(
@@ -598,7 +688,7 @@ class _SingleConvState extends State<SingleConv> {
                             ? 'synchronizing...'
                             : 'synchronize now'),
                     style: const TextStyle(
-                      color: Colors.black,
+                        color: Colors.black,
                         fontSize: 18,
                         fontWeight: FontWeight.bold),
                   ),
@@ -607,9 +697,8 @@ class _SingleConvState extends State<SingleConv> {
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child:
-                              CircularProgressIndicator(
-                                  strokeWidth: 2),
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2),
                         )
                       : const Icon(Icons.sync),
                 ],
@@ -619,10 +708,7 @@ class _SingleConvState extends State<SingleConv> {
             Text(
               _formatLastSyncText(),
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 12, 
-                  //color: Colors.black54
-                  ),
+              style: const TextStyle(fontSize: 12),
             ),
           ],
         ),

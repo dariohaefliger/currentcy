@@ -11,19 +11,15 @@ class MultiConv extends StatefulWidget {
 
 class _MultiConvState extends State<MultiConv>
     with SingleTickerProviderStateMixin {
-  // Controllers: index 0 = main (editable), 1..3 = readOnly (grey)
   late List<TextEditingController> controllers;
-
-  // Currency list (positional): index 0 = base currency
   late List<String> currencies;
 
-  // Current rates (mock or live, depending on _useMockRates)
   Map<String, double> _rates = {};
-
-  // Available currency codes (sorted)
   List<String> _currencyOptions = [];
 
-  // Animation controller for rotation
+  // favourites (codes) for picker
+  List<String> _favoriteCurrencies = [];
+
   late AnimationController _rotationController;
 
   bool _useMockRates = true;
@@ -35,9 +31,7 @@ class _MultiConvState extends State<MultiConv>
   void initState() {
     super.initState();
 
-    // initial 4 currencies
     currencies = ['CHF', 'EUR', 'USD', 'GBP'];
-
     controllers = List.generate(4, (index) => TextEditingController());
     controllers[0].text = '100.00';
 
@@ -58,7 +52,10 @@ class _MultiConvState extends State<MultiConv>
     final rates = CurrencyRepository.getRates(useMock);
     final options = CurrencyRepository.getCurrencyCodes(useMock);
 
-    // Ensure each currency in the initial list is valid
+    final favs = await SettingsManager.loadFavoriteCurrencies();
+    final validFavs =
+        favs.where((c) => options.contains(c)).toList();
+
     final fixedCurrencies = <String>[];
     for (var i = 0; i < currencies.length; i++) {
       final code = currencies[i];
@@ -75,6 +72,7 @@ class _MultiConvState extends State<MultiConv>
       _useMockRates = useMock;
       _rates = rates;
       _currencyOptions = options;
+      _favoriteCurrencies = validFavs;
       currencies = fixedCurrencies;
       _lastSync = CurrencyRepository.lastSync;
       _isLoading = false;
@@ -100,7 +98,6 @@ class _MultiConvState extends State<MultiConv>
     return toRate / fromRate;
   }
 
-  // Recalculate rows 1..3 based on controllers[0]
   void _recalculateFromMain() {
     final txt = controllers[0].text.replaceAll(',', '.');
     final value = double.tryParse(txt);
@@ -166,7 +163,6 @@ class _MultiConvState extends State<MultiConv>
       final newRates = await CurrencyRepository.syncLiveRates();
       final options = CurrencyRepository.getCurrencyCodes(false);
 
-      // Make sure each currency is still valid
       final fixedCurrencies = <String>[];
       for (var i = 0; i < currencies.length; i++) {
         final code = currencies[i];
@@ -209,7 +205,7 @@ class _MultiConvState extends State<MultiConv>
     }
   }
 
-  // ---- currency picker with search (code + full name) ----
+  // ---- currency picker with search + favourites ----
 
   Future<void> _showCurrencyPicker(int index) async {
     if (_currencyOptions.isEmpty) return;
@@ -217,73 +213,154 @@ class _MultiConvState extends State<MultiConv>
     final selected = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
         final searchController = TextEditingController();
-        List<String> filtered = List.of(_currencyOptions);
+
+        List<String> favBase = _favoriteCurrencies
+            .where((c) => _currencyOptions.contains(c))
+            .toList();
+        List<String> othersBase = _currencyOptions
+            .where((c) => !favBase.contains(c))
+            .toList();
+
+        List<String> favFiltered = List.of(favBase);
+        List<String> othersFiltered = List.of(othersBase);
 
         void applyFilter(String query) {
           final q = query.toLowerCase();
-          filtered = _currencyOptions.where((code) {
-            final name = CurrencyRepository.nameFor(code);
-            return code.toLowerCase().contains(q) ||
-                name.toLowerCase().contains(q);
-          }).toList();
+          if (q.isEmpty) {
+            favFiltered = List.of(favBase);
+            othersFiltered = List.of(othersBase);
+          } else {
+            bool matches(String code) {
+              final name =
+                  CurrencyRepository.nameFor(code).toLowerCase();
+              return code.toLowerCase().contains(q) ||
+                  name.contains(q);
+            }
+
+            favFiltered = favBase.where(matches).toList();
+            othersFiltered = othersBase.where(matches).toList();
+          }
         }
 
-        return SafeArea(
-          child: StatefulBuilder(
-            builder: (context, setModalState) {
-              return Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Search field
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                      child: TextField(
-                        controller: searchController,
-                        decoration: const InputDecoration(
-                          prefixIcon: Icon(Icons.search),
-                          hintText: 'Search currency (code or name)',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.all(Radius.circular(12)),
+        applyFilter('');
+
+        return Align(
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            margin: const EdgeInsets.only(top: 70),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
+            ),
+            child: SafeArea(
+              top: false,
+              child: StatefulBuilder(
+                builder: (context, setModalState) {
+                  return Padding(
+                    padding: EdgeInsets.only(
+                      bottom: MediaQuery.of(context).viewInsets.bottom,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Grabber
+                        Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(
+                              top: 8, bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[400],
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
-                        onChanged: (value) {
-                          setModalState(() {
-                            applyFilter(value);
-                          });
-                        },
-                      ),
-                    ),
-                    // List of currencies
-                    Flexible(
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: filtered.length,
-                        itemBuilder: (context, i) {
-                          final code = filtered[i];
-                          final flag = CurrencyRepository.flagFor(code);
-                          final name = CurrencyRepository.nameFor(code);
-                          return ListTile(
-                            leading: Text(
-                              flag,
-                              style: const TextStyle(fontSize: 28, color: Colors.black),
+
+                        // Search
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                              16, 0, 16, 8),
+                          child: TextField(
+                            controller: searchController,
+                            decoration: const InputDecoration(
+                              prefixIcon: Icon(Icons.search),
+                              hintText:
+                                  'Search currency (code or name)',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.all(
+                                    Radius.circular(12)),
+                              ),
                             ),
-                            title: Text(name),
-                            subtitle: Text(code),
-                            onTap: () => Navigator.of(context).pop(code),
-                          );
-                        },
-                      ),
+                            onChanged: (value) {
+                              setModalState(() {
+                                applyFilter(value);
+                              });
+                            },
+                          ),
+                        ),
+
+                        Flexible(
+                          child: ListView(
+                            shrinkWrap: true,
+                            children: [
+                              if (favFiltered.isNotEmpty) ...[
+                                ...favFiltered.map((code) {
+                                  final flag =
+                                      CurrencyRepository.flagFor(code);
+                                  final name =
+                                      CurrencyRepository.nameFor(code);
+                                  return ListTile(
+                                    leading: Text(
+                                      flag,
+                                      style: const TextStyle(
+                                          fontSize: 28),
+                                    ),
+                                    title: Text(name),
+                                    subtitle: Text(code),
+                                    trailing: const Text(
+                                      '☆',
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                      ),
+                                    ),
+                                    onTap: () =>
+                                        Navigator.of(context)
+                                            .pop(code),
+                                  );
+                                }),
+                                const Divider(),
+                              ],
+                              ...othersFiltered.map((code) {
+                                final flag =
+                                    CurrencyRepository.flagFor(code);
+                                final name =
+                                    CurrencyRepository.nameFor(code);
+                                return ListTile(
+                                  leading: Text(
+                                    flag,
+                                    style: const TextStyle(
+                                        fontSize: 28),
+                                  ),
+                                  title: Text(name),
+                                  subtitle: Text(code),
+                                  onTap: () =>
+                                      Navigator.of(context)
+                                          .pop(code),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              );
-            },
+                  );
+                },
+              ),
+            ),
           ),
         );
       },
@@ -302,16 +379,16 @@ class _MultiConvState extends State<MultiConv>
       return 'Mock mode is enabled. Go to Settings to disable it and fetch live exchange rates.';
     }
     if (_lastSync == null) {
-      return 'Last synchronization: never\nYou may synchronize now to get the most recent exchange rates.';
+      return 'Last synchronization: never\nTap "synchronize now" to fetch the newest rates.';
     }
     final d = _lastSync!;
     final dateStr =
         '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year} '
         '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-    return 'Last synchronization: $dateStr\nYou may synchronize now to get the most recent exchange rates.';
+    return 'Last synchronization: $dateStr\nTap "synchronize now" to refresh the exchange rates.';
   }
 
-  // ---- UI building helpers ----
+  // ---- UI helpers ----
 
   Widget _buildMainField() {
     return Expanded(
@@ -335,8 +412,10 @@ class _MultiConvState extends State<MultiConv>
           keyboardType:
               const TextInputType.numberWithOptions(decimal: true),
           textAlign: TextAlign.right,
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, 
-          color: Colors.black
+          style: const TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
           ),
           decoration: const InputDecoration.collapsed(hintText: ''),
         ),
@@ -376,7 +455,6 @@ class _MultiConvState extends State<MultiConv>
     );
   }
 
-  // The currency "chip" on the right side (with popup on tap)
   Widget _buildCurrencyChip(int index) {
     final code = currencies[index];
     final flag = _flagFor(code);
@@ -404,19 +482,24 @@ class _MultiConvState extends State<MultiConv>
                       code,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: Colors.black,
+                      ),
                     ),
                     Text(
                       name,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11, color: Colors.black),
+                      style:
+                          const TextStyle(fontSize: 11, color: Colors.black),
                     ),
                   ],
                 ),
               ),
               Text(
                 flag,
-                style: const TextStyle(fontSize: 20, color: Colors.black),
+                style:
+                    const TextStyle(fontSize: 20, color: Colors.black),
               ),
             ],
           ),
@@ -459,17 +542,13 @@ class _MultiConvState extends State<MultiConv>
               const Text(
                 'Edit the top amount. Pick currencies for each row. Use the rotate button to rotate currencies & amounts clockwise.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, 
-                //color: Colors.black54
-                ),
+                style: TextStyle(fontSize: 13),
               ),
               const SizedBox(height: 22),
 
-              // Main row (index 0)
               _buildRow(0, editable: true),
               const SizedBox(height: 18),
 
-              // Rotation button
               RotationTransition(
                 turns: Tween(begin: 0.0, end: 1.0).animate(
                   CurvedAnimation(
@@ -478,16 +557,15 @@ class _MultiConvState extends State<MultiConv>
                   ),
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.refresh,
-                      size: 36, 
-                      //color: Colors.black54
-                      ),
+                  icon: const Icon(
+                    Icons.refresh,
+                    size: 36,
+                  ),
                   onPressed: _rotateClockwise,
                 ),
               ),
               const SizedBox(height: 18),
 
-              // Result rows (1..3)
               _buildRow(1, editable: false),
               const SizedBox(height: 12),
               _buildRow(2, editable: false),
@@ -499,9 +577,7 @@ class _MultiConvState extends State<MultiConv>
         ),
       ),
 
-      // Footer with sync button & info
       bottomNavigationBar: Container(
-        //color: Colors.white,
         padding:
             const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         child: Column(
@@ -547,10 +623,7 @@ class _MultiConvState extends State<MultiConv>
             Text(
               _formatLastSyncText(),
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 12, 
-                  //color: Colors.black54
-                  ),
+              style: const TextStyle(fontSize: 12),
             ),
           ],
         ),
