@@ -13,7 +13,7 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
- Widget build(BuildContext context) {
+  Widget build(BuildContext context) {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: ThemeManager.themeModeNotifier,
       builder: (context, mode, _) {
@@ -33,7 +33,14 @@ class MyApp extends StatelessWidget {
               brightness: Brightness.dark,
             ),
           ),
-          home: const MyHomePage(title: 'Currentcy'),
+
+          // Titel jetzt ein Bild
+          home: MyHomePage(
+            title: Image.asset(
+              'images/Currentcy-Logo_ohne_Hintergrund.PNG',
+              scale: 1,
+            ),
+          ),
         );
       },
     );
@@ -42,7 +49,9 @@ class MyApp extends StatelessWidget {
 
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
-  final String title;
+
+  // ❶ Titel jetzt ein Widget statt String
+  final Widget title;
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -51,24 +60,24 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) => DefaultTabController(
-    length: 3,
-    child: Scaffold(
-      appBar: AppBar(
-        title: const Text('Currentcy'),
-        //backgroundColor: Colors.white70,
-        centerTitle: false,
-        actions: [
-          IconButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) =>
-                      const Settings(),
-                  transitionsBuilder:
-                      (context, animation, secondaryAnimation, child) {
-                        const begin = Offset(1.0, 0.0); // Start: von rechts
-                        const end = Offset.zero; // Ziel: zentriert
+        length: 3,
+        child: Scaffold(
+          appBar: AppBar(
+            // ❷ Titel als Bild einfügen
+            title: widget.title,
+            centerTitle: false,
+            actions: [
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) =>
+                          const Settings(),
+                      transitionsBuilder:
+                          (context, animation, secondaryAnimation, child) {
+                        const begin = Offset(1.0, 0.0);
+                        const end = Offset.zero;
                         const curve = Curves.easeInOut;
 
                         final tween = Tween(
@@ -82,24 +91,27 @@ class _MyHomePageState extends State<MyHomePage> {
                           child: child,
                         );
                       },
-                  transitionDuration: const Duration(milliseconds: 350),
+                      transitionDuration: const Duration(milliseconds: 350),
+                    ),
+                  );
+                },
+                icon: const Icon(
+                  Icons.settings,
+                  size: 40,
                 ),
-              );
-            },
-            icon: const Icon(Icons.settings, size: 40, 
-            //color: Colors.black
+              ),
+            ],
+            bottom: const TabBar(
+              tabs: [
+                Tab(text: 'Single-Conv.', icon: Icon(Icons.currency_bitcoin)),
+                Tab(text: 'Multi-Conv.', icon: Icon(Icons.currency_exchange)),
+                Tab(text: 'Charts / History', icon: Icon(Icons.trending_up)),
+              ],
             ),
           ),
-        ],
-        bottom: const TabBar(
-          tabs: [
-            Tab(text: 'Single-Conv.', icon: Icon(Icons.currency_bitcoin)),
-            Tab(text: 'Multi-Conv.', icon: Icon(Icons.currency_exchange)),
-            Tab(text: 'Charts / History', icon: Icon(Icons.trending_up)),
-          ],
+          body: const TabBarView(
+            children: [SingleConv(), MultiConv(), ChartsHistory()],
+          ),
         ),
-      ),
-      body: const TabBarView(children: [SingleConv(), MultiConv(), ChartsHistory()]),
-    ),
-  );
+      );
 }
