@@ -101,9 +101,22 @@ flutter run
 ---
 
 ## Architecture Overview
-
+Currentcy follows a modular service & repository pattern.
 ```txt
-tbd
+currentcy/lib/
+├── main.dart
+├── page
+│   ├── charts_history.dart
+│   ├── multi_conv.dart
+│   └── single_conv.dart
+├── services
+│   ├── currency_repository.dart
+│   └── exchange_rates_service.dart
+└── settings
+    ├── exchange_rates_info.dart
+    ├── settings_main.dart
+    ├── settings_manager.dart
+    └── theme_manager.dart
 ```
 
 ---
