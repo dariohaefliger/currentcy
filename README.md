@@ -1,4 +1,4 @@
-# 📱 Currentcy — Advanced Currency Conversion App  
+# Currentcy — Advanced Currency Conversion App  
 **Release Version:** `alpha_0.1.14`  
 **License:** PolyForm Noncommercial License 1.0.0
 
@@ -47,14 +47,14 @@ Full integration with exchangeratesapi.io
 
 ---
 
-## 📸 Screenshots (placeholders)
+## Screenshots (placeholders)
 
 > Screenshots here
 
 
 ---
 
-## 📦 Installation
+## Installation
 
 ### Option A — Install APK (recommended for users)
 
@@ -64,7 +64,7 @@ Full integration with exchangeratesapi.io
 
 ---
 
-## 💻 Building From Source (Developers)
+## Building From Source (Developers)
 
 ### Requirements
 - Flutter 3.38
