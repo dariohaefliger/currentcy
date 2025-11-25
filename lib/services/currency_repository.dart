@@ -1,6 +1,13 @@
 import 'package:currentcy/services/exchange_rates_service.dart';
 import 'package:currentcy/settings/settings_manager.dart';
 
+/// Simple data model for a historical rate point.
+class HistoryPoint {
+  final DateTime date;
+  final double rate;
+  const HistoryPoint({required this.date, required this.rate});
+}
+
 class CurrencyRepository {
   /// Base set of supported currency codes BEFORE FIRST SYNC
   static final Set<String> _baseCodes = {
@@ -199,7 +206,6 @@ class CurrencyRepository {
     'ZWL': '🇿🇼',
   };
 
-
   /// Currency -> full name.
   static final Map<String, String> _names = {
     'AED': 'United Arab Emirates Dirham',
@@ -372,7 +378,6 @@ class CurrencyRepository {
     'ZWL': 'Zimbabwean Dollar',
   };
 
-
   // --------------- public getters ---------------
 
   static Map<String, double> get mockRates => _mockRates;
@@ -396,20 +401,24 @@ class CurrencyRepository {
     _lastSync = await SettingsManager.loadLastSync();
   }
 
+  /// Returns either mock or live rates, depending on useMock.
   static Map<String, double> getRates(bool useMock) {
     if (useMock) return _mockRates;
     return _liveRates ?? _mockRates;
   }
 
+  /// Returns all currency codes for the currently available rates.
   static List<String> getCurrencyCodes(bool useMock) {
     final rates = getRates(useMock);
     final codes = rates.keys.toList()..sort();
     return codes;
   }
 
+  /// Fetches latest live rates from the API and updates internal state.
   static Future<Map<String, double>> syncLiveRates() async {
     final fetched = await ExchangeRatesService.fetchLatestRates();
 
+    // track all codes we've seen
     _allCodes.addAll(fetched.keys);
 
     _liveRates = fetched;
@@ -419,6 +428,70 @@ class CurrencyRepository {
     await SettingsManager.saveLastSync(_lastSync!);
 
     return fetched;
+  }
+
+  /// Fetches historical cross rates for [base] -> [quote] for the last [days] days.
+  ///
+  /// - If mock mode is enabled, returns synthetic data based on mock rates
+  ///   (no network calls).
+  /// - If live mode is enabled, uses the exchangeratesapi.io historical endpoint.
+  static Future<List<HistoryPoint>> fetchHistoricalRates({
+    required String base,
+    required String quote,
+    int days = 5,
+  }) async {
+    if (days < 1) {
+      throw ArgumentError.value(days, 'days', 'must be >= 1');
+    }
+
+    final useMock = await SettingsManager.loadUseMockRates();
+
+    // MOCK MODE → generate simple synthetic history
+    if (useMock) {
+      final rates = getRates(true);
+      final baseRate = rates[base] ?? 1.0;
+      final quoteRate = rates[quote] ?? 1.0;
+      final cross = quoteRate / baseRate;
+
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      final result = <HistoryPoint>[];
+
+      // create slight variation for mock days
+      for (int i = days - 1; i >= 0; i--) {
+        final date = today.subtract(Duration(days: i));
+        final centeredIndex = i - (days - 1) / 2;
+        final factor = 1.0 + centeredIndex * 0.003;
+        result.add(
+          HistoryPoint(date: date, rate: cross * factor),
+        );
+      }
+      return result;
+    }
+
+    // LIVE MODE
+    final raw = await ExchangeRatesService.fetchHistoricalRates(
+      base: base,
+      quote: quote,
+      days: days,
+    );
+
+    final dates = raw.keys.toList()..sort();
+    final result = <HistoryPoint>[];
+
+    for (final d in dates) {
+      final dayRates = raw[d]!;
+      final baseRate = dayRates[base];
+      final quoteRate = dayRates[quote];
+      if (baseRate == null || quoteRate == null) {
+        continue; // skip if missing
+      }
+      final cross = quoteRate / baseRate;
+      result.add(HistoryPoint(date: d, rate: cross));
+    }
+
+    return result;
   }
 
   static String flagFor(String code) {

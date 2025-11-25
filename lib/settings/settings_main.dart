@@ -16,6 +16,7 @@ class _SettingsState extends State<Settings> {
 
   bool _isLoading = true;
   bool _useMockRates = true;
+  bool _hasPremiumPlan = false;
 
   // favourite currencies (ISO codes)
   List<String> _favoriteCurrencies = ['CHF', 'EUR', 'USD'];
@@ -33,12 +34,14 @@ class _SettingsState extends State<Settings> {
     final apiKey = await SettingsManager.loadApiKey();
     final useMock = await SettingsManager.loadUseMockRates();
     final favs = await SettingsManager.loadFavoriteCurrencies();
+    final hasPremium = await SettingsManager.loadHasPremiumPlan(); // NEW
 
     final options = CurrencyRepository.getCurrencyCodes(true);
 
     setState(() {
       _apiKeyController.text = apiKey ?? '';
       _useMockRates = useMock;
+      _hasPremiumPlan = hasPremium; // NEW
       _favoriteCurrencies = List<String>.from(favs);
       _currencyOptions = options;
       _isLoading = false;
@@ -58,6 +61,13 @@ class _SettingsState extends State<Settings> {
       _useMockRates = value;
     });
     await SettingsManager.saveUseMockRates(value);
+  }
+
+  Future<void> _togglePremiumPlan(bool value) async {
+    setState(() {
+      _hasPremiumPlan = value;
+    });
+    await SettingsManager.saveHasPremiumPlan(value);
   }
 
   @override
@@ -304,6 +314,19 @@ class _SettingsState extends State<Settings> {
                   onChanged: _toggleMockRates,
                   secondary: const Icon(Icons.science),
                 ),
+
+                // NEW: Premium / Business Plan Toggle
+                SwitchListTile(
+                  title: const Text('Professional / Business plan'),
+                  subtitle: const Text(
+                    'Enable this if your exchangeratesapi.io subscription is '
+                    'Professional or Business. Required for live historical charts.',
+                  ),
+                  value: _hasPremiumPlan,
+                  onChanged: _togglePremiumPlan,
+                  secondary: const Icon(Icons.workspace_premium),
+                ),
+
                 const SizedBox(height: 8),
                 TextField(
                   controller: _apiKeyController,
@@ -325,7 +348,6 @@ class _SettingsState extends State<Settings> {
                   'Disable "Use mock rates" to fetch live exchange rates using this key.',
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.black54,
                   ),
                 ),
               ],

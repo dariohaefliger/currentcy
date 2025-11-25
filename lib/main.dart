@@ -34,10 +34,9 @@ class MyApp extends StatelessWidget {
             ),
           ),
 
-          // Titel jetzt ein Bild
           home: MyHomePage(
             title: Image.asset(
-              'images/Currentcy-Logo_ohne_Hintergrund.PNG',
+              'images/Currentcy-Logo_ohne_Hintergrund.png',
               scale: 1,
             ),
           ),
@@ -50,7 +49,6 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
-  // ❶ Titel jetzt ein Widget statt String
   final Widget title;
 
   @override
@@ -63,7 +61,6 @@ class _MyHomePageState extends State<MyHomePage> {
         length: 3,
         child: Scaffold(
           appBar: AppBar(
-            // ❷ Titel als Bild einfügen
             title: widget.title,
             centerTitle: false,
             actions: [
@@ -105,7 +102,7 @@ class _MyHomePageState extends State<MyHomePage> {
               tabs: [
                 Tab(text: 'Single-Conv.', icon: Icon(Icons.currency_bitcoin)),
                 Tab(text: 'Multi-Conv.', icon: Icon(Icons.currency_exchange)),
-                Tab(text: 'Charts / History', icon: Icon(Icons.trending_up)),
+                Tab(text: 'Charts', icon: Icon(Icons.trending_up)),
               ],
             ),
           ),
