@@ -480,8 +480,7 @@ class _SingleConvState extends State<SingleConv> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
-                      color:
-                          const Color.fromARGB(255, 116, 115, 115),
+                      color: Colors.grey.shade300,
                       borderRadius: BorderRadius.circular(28),
                       border:
                           Border.all(color: Colors.black12),
@@ -497,6 +496,7 @@ class _SingleConvState extends State<SingleConv> {
                       controller: toController,
                       readOnly: true,
                       onTap: _onRightButtonPressed,
+                      textAlign: TextAlign.right, // <-- rechtsbündig Zahlen
                       style: const TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
@@ -598,10 +598,18 @@ class _SingleConvState extends State<SingleConv> {
                         mainAxisAlignment:
                             MainAxisAlignment.spaceBetween,
                         children: [
+                          Text(
+                            CurrencyRepository.flagFor(toCurrency),
+                            style: const TextStyle(
+                              fontSize: 26,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Flexible(
                             child: Column(
                               crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                                  CrossAxisAlignment.end,
                               children: [
                                 Text(
                                   toCurrency,
@@ -609,11 +617,13 @@ class _SingleConvState extends State<SingleConv> {
                                   overflow:
                                       TextOverflow.ellipsis,
                                   softWrap: false,
+                                  textAlign: TextAlign.right,
                                   style: const TextStyle(
-                                      color: Colors.black,
-                                      fontWeight:
-                                          FontWeight.bold,
-                                      fontSize: 16),
+                                    color: Colors.black,
+                                    fontWeight:
+                                        FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
                                 ),
                                 Text(
                                   toName,
@@ -621,19 +631,14 @@ class _SingleConvState extends State<SingleConv> {
                                   overflow:
                                       TextOverflow.ellipsis,
                                   softWrap: false,
+                                  textAlign: TextAlign.right,
                                   style: const TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 12),
+                                    color: Colors.black,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-                          Text(
-                            CurrencyRepository.flagFor(
-                                toCurrency),
-                            style: const TextStyle(
-                                fontSize: 26,
-                                color: Colors.black),
                           ),
                         ],
                       ),

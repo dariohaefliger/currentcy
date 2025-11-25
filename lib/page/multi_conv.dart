@@ -392,9 +392,10 @@ class _MultiConvState extends State<MultiConv>
 
   Widget _buildMainField() {
     return Expanded(
-      flex: 2,
+      flex: 1,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        constraints: const BoxConstraints(minHeight: 64),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(28),
@@ -425,9 +426,10 @@ class _MultiConvState extends State<MultiConv>
 
   Widget _buildDisabledField(int idx) {
     return Expanded(
-      flex: 2,
+      flex: 1,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        constraints: const BoxConstraints(minHeight: 64),
         decoration: BoxDecoration(
           color: Colors.grey.shade300,
           borderRadius: BorderRadius.circular(28),
@@ -462,15 +464,24 @@ class _MultiConvState extends State<MultiConv>
 
     return Expanded(
       flex: 1,
-      child: GestureDetector(
-        onTap: () => _showCurrencyPicker(index),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.black12),
-          ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        constraints: const BoxConstraints(minHeight: 64),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(color: Colors.black12),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            )
+          ],
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(28),
+          onTap: () => _showCurrencyPicker(index),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -483,7 +494,7 @@ class _MultiConvState extends State<MultiConv>
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 16,
                         color: Colors.black,
                       ),
                     ),
@@ -491,7 +502,7 @@ class _MultiConvState extends State<MultiConv>
                       name,
                       overflow: TextOverflow.ellipsis,
                       style:
-                          const TextStyle(fontSize: 11, color: Colors.black),
+                          const TextStyle(fontSize: 12, color: Colors.black),
                     ),
                   ],
                 ),
@@ -532,36 +543,44 @@ class _MultiConvState extends State<MultiConv>
           padding:
               const EdgeInsets.symmetric(horizontal: 18.0, vertical: 14.0),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               const Text(
                 'Multi Conversion',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               const Text(
-                'Edit the top amount. Pick currencies for each row. Use the rotate button to rotate currencies & amounts clockwise.',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13),
+                'Edit the top amount. Pick currencies for each row. Use the rotate button to rotate currencies & amounts.',
+                style: TextStyle(
+                  fontSize: 16,
+                ),
               ),
-              const SizedBox(height: 22),
+
+              const SizedBox(height: 20),
 
               _buildRow(0, editable: true),
               const SizedBox(height: 18),
 
-              RotationTransition(
-                turns: Tween(begin: 0.0, end: 1.0).animate(
-                  CurvedAnimation(
-                    parent: _rotationController,
-                    curve: Curves.easeInOut,
+              Center(
+                child: RotationTransition(
+                  turns: Tween(begin: 0.0, end: 1.0).animate(
+                    CurvedAnimation(
+                      parent: _rotationController,
+                      curve: Curves.easeInOut,
+                    ),
                   ),
-                ),
-                child: IconButton(
-                  icon: const Icon(
-                    Icons.refresh,
-                    size: 36,
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.refresh,
+                      size: 36,
+                    ),
+                    onPressed: _rotateClockwise,
                   ),
-                  onPressed: _rotateClockwise,
                 ),
               ),
               const SizedBox(height: 18),
