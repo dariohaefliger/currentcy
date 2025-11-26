@@ -1,6 +1,10 @@
-# Currentcy — Advanced Currency Conversion App  
-**Release Version:** `alpha_0.1.14`  
-**License:** PolyForm Noncommercial License 1.0.0
+# Currentcy — Currency Conversion App  
+[![Flutter](https://img.shields.io/badge/Flutter-3.38-blue?logo=flutter&logoColor=white)]()
+[![Release](https://img.shields.io/badge/Release-1.0.0-success)]()
+[![License](https://img.shields.io/badge/License-PolyForm%20Noncommercial%201.0.0-brightgreen)]()  
+[![Platform](https://img.shields.io/badge/Android-Supported-green?logo=android)]()
+[![iOS](https://img.shields.io/badge/iOS-Not%20Supported-red?logo=apple&logoColor=white)]()
+[![Status](https://img.shields.io/badge/Development-Part%20Time-orange)]()   
 
 A professional-grade mobile application for converting currencies with **live exchange rates**, **multi-currency views**, and **5-day historical charts**.  
 Designed for **private users** of all kinds, especially **travelers** who need fast and reliable exchange calculations.
@@ -15,7 +19,7 @@ Designed for **private users** of all kinds, especially **travelers** who need f
 Convert one base currency into another with instant results.
 
 #### **2. Multi-Conversion**
-Convert from one base currency into **up to four** additional currencies at once.
+Convert from one base currency into **to three** additional currencies at once.
 
 #### **3. Favourite Currencies**
 Choose your three most-used currencies for faster selection across the entire app.
@@ -36,10 +40,10 @@ Full integration with exchangeratesapi.io
 
 ---
 
-### Secondary Features (still worth mentioning)
+### Secondary Features
 
 - Dark & Light mode  
-- Clean UI/UX with responsive layout  
+- Clean UI/UX
 - Currency search with flags, names, and ISO codes  
 - Intelligent favourite grouping in currency picker  
 - Animated bottom-sheet currency selector with grabber  
@@ -64,14 +68,14 @@ Full integration with exchangeratesapi.io
 
 ---
 
-## Building From Source (Developers)
+### Option B - Building From Source (Developers)
 
-### Requirements
+#### Requirements
 - Flutter 3.38
 - Android SDK
 - Dart
 
-### Clone & Run
+#### Clone & Run
 ```bash
 git clone https://github.com/dariohaefliger/currentcy.git
 cd currentcy
@@ -83,12 +87,12 @@ flutter run
 
 ## Adding Your API Key
 1. Open the Settings screen.
-2. Enter your exchangeratesapi.io API key.
+2. Enter your exchangeratesapi.io API key ande save it.
 3. Disable "Use mock rates".
-4. (Optional) Enable "Professional / Business plan" toggle if you have such a subscriptioon.
+4. (Optional) Enable "Professional / Business plan" toggle if you have such a (exchangerateapi.io) subscription.
 
 ## API Requirements & Limitations
-### Live Exchange Rates
+### Live Exchange Rates (single and multi conversion)
 - Require a valid API key
 - Works on all exchangeratesapi.io plans
 ### Historical Charts
