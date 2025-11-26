@@ -1,7 +1,27 @@
+// -----------------------------------------------------------------------------
+// currentcy – Multi Conversion Screen
+//
+// This file contains:
+// - The [MultiConv] widget (stateful)
+// - Logic for converting one base amount into multiple currencies
+// - Currency picker with favourites and search
+// - Synchronization trigger for live exchange rates
+//
+// Responsibilities:
+// - Load rates and user settings (mock mode, favourites)
+// - Convert a single input amount into several target currencies
+// - Support rotating currencies & amounts for quick reordering
+// - Show last synchronization status and sync action
+// -----------------------------------------------------------------------------
+
 import 'package:flutter/material.dart';
 import 'package:currentcy/services/currency_repository.dart';
 import 'package:currentcy/settings/settings_manager.dart';
 
+/// Multi currency conversion screen.
+///
+/// Allows the user to enter an amount in one base currency and see the
+/// converted values for multiple other currencies in parallel.
 class MultiConv extends StatefulWidget {
   const MultiConv({super.key});
 
@@ -11,27 +31,44 @@ class MultiConv extends StatefulWidget {
 
 class _MultiConvState extends State<MultiConv>
     with SingleTickerProviderStateMixin {
+  /// Text controllers for the four rows (row 0 is the editable base amount).
   late List<TextEditingController> controllers;
+
+  /// Currency code for each row (length must match [controllers]).
   late List<String> currencies;
 
+  /// Currently loaded exchange rates mapped by currency code.
   Map<String, double> _rates = {};
+
+  /// All available currency codes for selection.
   List<String> _currencyOptions = [];
 
-  // favourites (codes) for picker
+  /// Favourite currency codes used to highlight options in the picker.
   List<String> _favoriteCurrencies = [];
 
+  /// Controls the rotation animation for the rotate button.
   late AnimationController _rotationController;
 
+  /// Whether mock rates are being used instead of live data.
   bool _useMockRates = true;
+
+  /// True while a live synchronization is in progress.
   bool _isSyncing = false;
+
+  /// Whether initial settings and rates are still loading.
   bool _isLoading = true;
+
+  /// Timestamp of the last successful synchronization (live data).
   DateTime? _lastSync;
 
   @override
   void initState() {
     super.initState();
 
+    // Default initial currencies for the four rows.
     currencies = ['CHF', 'EUR', 'USD', 'GBP'];
+
+    // Create one controller per row; row 0 is editable input.
     controllers = List.generate(4, (index) => TextEditingController());
     controllers[0].text = '100.00';
 
@@ -40,11 +77,17 @@ class _MultiConvState extends State<MultiConv>
       duration: const Duration(milliseconds: 600),
     );
 
+    // Whenever the main input changes, recalculate all other rows.
     controllers[0].addListener(_recalculateFromMain);
 
     _initSettingsAndRates();
   }
 
+  /// Loads settings and initial rates, then prepares the UI state.
+  ///
+  /// - Reads `useMockRates` from settings.
+  /// - Loads last sync timestamp and rates from [CurrencyRepository].
+  /// - Validates and normalizes favourites and the current currencies list.
   Future<void> _initSettingsAndRates() async {
     final useMock = await SettingsManager.loadUseMockRates();
     await CurrencyRepository.loadLastSync();
@@ -52,10 +95,11 @@ class _MultiConvState extends State<MultiConv>
     final rates = CurrencyRepository.getRates(useMock);
     final options = CurrencyRepository.getCurrencyCodes(useMock);
 
+    // Load favorites and keep only those that exist in the current options.
     final favs = await SettingsManager.loadFavoriteCurrencies();
-    final validFavs =
-        favs.where((c) => options.contains(c)).toList();
+    final validFavs = favs.where((c) => options.contains(c)).toList();
 
+    // Ensure that each row has a valid currency, falling back to available ones.
     final fixedCurrencies = <String>[];
     for (var i = 0; i < currencies.length; i++) {
       final code = currencies[i];
@@ -92,15 +136,25 @@ class _MultiConvState extends State<MultiConv>
 
   // ---- conversion logic ----
 
+  /// Returns the conversion rate between [from] and [to].
+  ///
+  /// If a rate is missing, it falls back to 1.0 for that currency.
+  /// The returned value represents: 1 [from] = X [to].
   double _rate(String from, String to) {
     final fromRate = _rates[from] ?? 1.0;
     final toRate = _rates[to] ?? 1.0;
     return toRate / fromRate;
   }
 
+  /// Recalculates all dependent rows based on the main (row 0) amount.
+  ///
+  /// - Parses the main input as a double (supports comma as decimal separator).
+  /// - Clears other rows when parsing fails.
+  /// - Updates rows 1–3 using the current base currency from row 0.
   void _recalculateFromMain() {
     final txt = controllers[0].text.replaceAll(',', '.');
     final value = double.tryParse(txt);
+
     if (value == null) {
       for (int i = 1; i < controllers.length; i++) {
         controllers[i].text = '';
@@ -117,6 +171,7 @@ class _MultiConvState extends State<MultiConv>
     setState(() {});
   }
 
+  /// Updates the currency at [index] and recalculates all rows.
   void _onCurrencyChanged(int index, String newCode) {
     setState(() {
       currencies[index] = newCode;
@@ -124,6 +179,11 @@ class _MultiConvState extends State<MultiConv>
     _recalculateFromMain();
   }
 
+  /// Rotates the list of currencies and amounts clockwise.
+  ///
+  /// - Plays a rotation animation on the refresh icon.
+  /// - Moves the last currency to the first position.
+  /// - Shifts the corresponding amounts in the same order.
   void _rotateClockwise() async {
     await _rotationController.forward(from: 0.0);
 
@@ -143,6 +203,11 @@ class _MultiConvState extends State<MultiConv>
 
   // ---- sync ----
 
+  /// Handles tap on the "synchronize now" button.
+  ///
+  /// - Shows an info message when mock mode is active.
+  /// - Otherwise, triggers a live rates sync via [CurrencyRepository.syncLiveRates].
+  /// - Ensures all row currencies remain valid after the sync.
   Future<void> _onSynchronizePressed() async {
     if (_useMockRates) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -163,6 +228,7 @@ class _MultiConvState extends State<MultiConv>
       final newRates = await CurrencyRepository.syncLiveRates();
       final options = CurrencyRepository.getCurrencyCodes(false);
 
+      // Normalize current currencies against the newly available options.
       final fixedCurrencies = <String>[];
       for (var i = 0; i < currencies.length; i++) {
         final code = currencies[i];
@@ -207,6 +273,11 @@ class _MultiConvState extends State<MultiConv>
 
   // ---- currency picker with search + favourites ----
 
+  /// Opens a modal bottom sheet to choose a currency for row [index].
+  ///
+  /// - Displays favourites at the top, followed by all other currencies.
+  /// - Provides a search field for code and name.
+  /// - Updates the currency for the given index on selection.
   Future<void> _showCurrencyPicker(int index) async {
     if (_currencyOptions.isEmpty) return;
 
@@ -217,6 +288,7 @@ class _MultiConvState extends State<MultiConv>
       builder: (ctx) {
         final searchController = TextEditingController();
 
+        // Prepare base lists for favourites and other currencies.
         List<String> favBase = _favoriteCurrencies
             .where((c) => _currencyOptions.contains(c))
             .toList();
@@ -224,6 +296,7 @@ class _MultiConvState extends State<MultiConv>
             .where((c) => !favBase.contains(c))
             .toList();
 
+        // These lists will be filtered in-place by the search logic.
         List<String> favFiltered = List.of(favBase);
         List<String> othersFiltered = List.of(othersBase);
 
@@ -245,6 +318,7 @@ class _MultiConvState extends State<MultiConv>
           }
         }
 
+        // Initial filter with empty query.
         applyFilter('');
 
         return Align(
@@ -268,22 +342,28 @@ class _MultiConvState extends State<MultiConv>
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Grabber
+                        // Drag handle.
                         Container(
                           width: 40,
                           height: 4,
                           margin: const EdgeInsets.only(
-                              top: 8, bottom: 12),
+                            top: 8,
+                            bottom: 12,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.grey[400],
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
 
-                        // Search
+                        // Search field.
                         Padding(
                           padding: const EdgeInsets.fromLTRB(
-                              16, 0, 16, 8),
+                            16,
+                            0,
+                            16,
+                            8,
+                          ),
                           child: TextField(
                             controller: searchController,
                             decoration: const InputDecoration(
@@ -292,7 +372,8 @@ class _MultiConvState extends State<MultiConv>
                                   'Search currency (code or name)',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.all(
-                                    Radius.circular(12)),
+                                  Radius.circular(12),
+                                ),
                               ),
                             ),
                             onChanged: (value) {
@@ -303,6 +384,7 @@ class _MultiConvState extends State<MultiConv>
                           ),
                         ),
 
+                        // List of favourites and all other currencies.
                         Flexible(
                           child: ListView(
                             shrinkWrap: true,
@@ -317,7 +399,8 @@ class _MultiConvState extends State<MultiConv>
                                     leading: Text(
                                       flag,
                                       style: const TextStyle(
-                                          fontSize: 28),
+                                        fontSize: 28,
+                                      ),
                                     ),
                                     title: Text(name),
                                     subtitle: Text(code),
@@ -328,8 +411,7 @@ class _MultiConvState extends State<MultiConv>
                                       ),
                                     ),
                                     onTap: () =>
-                                        Navigator.of(context)
-                                            .pop(code),
+                                        Navigator.of(context).pop(code),
                                   );
                                 }),
                                 const Divider(),
@@ -343,13 +425,13 @@ class _MultiConvState extends State<MultiConv>
                                   leading: Text(
                                     flag,
                                     style: const TextStyle(
-                                        fontSize: 28),
+                                      fontSize: 28,
+                                    ),
                                   ),
                                   title: Text(name),
                                   subtitle: Text(code),
                                   onTap: () =>
-                                      Navigator.of(context)
-                                          .pop(code),
+                                      Navigator.of(context).pop(code),
                                 );
                               }),
                             ],
@@ -371,9 +453,18 @@ class _MultiConvState extends State<MultiConv>
     }
   }
 
+  /// Convenience wrapper for flag lookup by [code].
   String _flagFor(String code) => CurrencyRepository.flagFor(code);
+
+  /// Convenience wrapper for name lookup by [code].
   String _nameFor(String code) => CurrencyRepository.nameFor(code);
 
+  /// Builds user-facing text describing the last synchronization state.
+  ///
+  /// Handles:
+  /// - Mock mode notice
+  /// - "never synchronized" case
+  /// - Human-readable timestamp of the last sync
   String _formatLastSyncText() {
     if (_useMockRates) {
       return 'Mock mode is enabled. Go to Settings to disable it and fetch live exchange rates.';
@@ -390,6 +481,7 @@ class _MultiConvState extends State<MultiConv>
 
   // ---- UI helpers ----
 
+  /// Builds the main editable input field (row 0).
   Widget _buildMainField() {
     return Expanded(
       flex: 1,
@@ -424,6 +516,7 @@ class _MultiConvState extends State<MultiConv>
     );
   }
 
+  /// Builds a read-only field for derived rows (rows 1–3).
   Widget _buildDisabledField(int idx) {
     return Expanded(
       flex: 1,
@@ -457,6 +550,9 @@ class _MultiConvState extends State<MultiConv>
     );
   }
 
+  /// Builds a currency "chip" for the given [index].
+  ///
+  /// Shows code, full name and flag, and opens the currency picker on tap.
   Widget _buildCurrencyChip(int index) {
     final code = currencies[index];
     final flag = _flagFor(code);
@@ -519,6 +615,10 @@ class _MultiConvState extends State<MultiConv>
     );
   }
 
+  /// Builds a row with amount field and currency chip.
+  ///
+  /// When [editable] is true, the amount is user-editable (row 0),
+  /// otherwise it is read-only (rows 1–3).
   Widget _buildRow(int index, {required bool editable}) {
     return Row(
       children: [
@@ -531,6 +631,7 @@ class _MultiConvState extends State<MultiConv>
 
   @override
   Widget build(BuildContext context) {
+    // Initial loading state while settings and rates are fetched.
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -563,9 +664,11 @@ class _MultiConvState extends State<MultiConv>
 
               const SizedBox(height: 20),
 
+              // Main editable row.
               _buildRow(0, editable: true),
               const SizedBox(height: 18),
 
+              // Rotate button with animation.
               Center(
                 child: RotationTransition(
                   turns: Tween(begin: 0.0, end: 1.0).animate(
@@ -585,6 +688,7 @@ class _MultiConvState extends State<MultiConv>
               ),
               const SizedBox(height: 18),
 
+              // Dependent rows.
               _buildRow(1, editable: false),
               const SizedBox(height: 12),
               _buildRow(2, editable: false),
@@ -596,12 +700,14 @@ class _MultiConvState extends State<MultiConv>
         ),
       ),
 
+      // ---- Bottom sync area ----
       bottomNavigationBar: Container(
         padding:
             const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Synchronize / mock mode button.
             ElevatedButton(
               onPressed: _isSyncing ? null : _onSynchronizePressed,
               style: ElevatedButton.styleFrom(
@@ -639,6 +745,7 @@ class _MultiConvState extends State<MultiConv>
               ),
             ),
             const SizedBox(height: 8),
+            // Last sync info text.
             Text(
               _formatLastSyncText(),
               textAlign: TextAlign.center,

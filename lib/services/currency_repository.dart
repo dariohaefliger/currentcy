@@ -1,15 +1,43 @@
+// -----------------------------------------------------------------------------
+// currentcy – Currency Repository
+//
+// This file contains:
+// - [HistoryPoint] data model for historical rates
+// - [CurrencyRepository] static utilities for currency data
+//
+// Responsibilities:
+// - Provide mock and live FX rates via [ExchangeRatesService]
+// - Cache last sync timestamp and available currency codes
+// - Expose currency metadata (flags, full names)
+// - Generate historical series for charts (mock or live)
+// -----------------------------------------------------------------------------
+
 import 'package:currentcy/services/exchange_rates_service.dart';
 import 'package:currentcy/settings/settings_manager.dart';
 
 /// Simple data model for a historical rate point.
+///
+/// [date] is always truncated to a calendar day (no time-of-day semantics).
+/// [rate] is the cross rate for base → quote on that day.
 class HistoryPoint {
   final DateTime date;
   final double rate;
+
   const HistoryPoint({required this.date, required this.rate});
 }
 
+/// In-memory repository for currency-related data.
+///
+/// Provides:
+/// - Mock rate generation and storage
+/// - Live rate synchronization via [ExchangeRatesService]
+/// - Historical rate series for a base/quote pair
+/// - Currency metadata (flags, display names)
+///
+/// All methods and fields are static; this class is not meant to be
+/// instantiated.
 class CurrencyRepository {
-  /// Base set of supported currency codes BEFORE FIRST SYNC
+  /// Base set of supported currency codes **before the first live sync**.
   static final Set<String> _baseCodes = {
     'AUD',
     'CAD',
@@ -23,20 +51,23 @@ class CurrencyRepository {
     'USD',
   };
 
-  /// All known codes = base codes + codes we’ve seen from the API.
+  /// All known codes = base codes + codes seen in API responses.
   static final Set<String> _allCodes = {..._baseCodes};
 
-  /// Mock rates; built from _allCodes in alphabetical order:
+  /// Mock rates; built from [_allCodes] in alphabetical order:
   /// 1.00, 1.01, 1.02, ...
   static Map<String, double> _mockRates = _buildMockRates();
 
   /// Live rates from API (EUR-based free plan).
   static Map<String, double>? _liveRates;
 
-  /// Last sync time (live rates).
+  /// Last sync time for live rates (local time).
   static DateTime? _lastSync;
 
-  /// Currency -> flag emoji.
+  /// Currency code → flag emoji.
+  ///
+  /// Note: For some shared currencies (XAF, XOF, XCD), one representative
+  /// country flag is picked.
   static final Map<String, String> _flags = {
     'AED': '🇦🇪',
     'AFN': '🇦🇫',
@@ -206,7 +237,9 @@ class CurrencyRepository {
     'ZWL': '🇿🇼',
   };
 
-  /// Currency -> full name.
+  /// Currency code → full display name.
+  ///
+  /// Used in pickers and other UI to show a human-friendly description.
   static final Map<String, String> _names = {
     'AED': 'United Arab Emirates Dirham',
     'AFN': 'Afghan Afghani',
@@ -380,12 +413,18 @@ class CurrencyRepository {
 
   // --------------- public getters ---------------
 
+  /// Exposes the currently generated mock rates (read-only).
   static Map<String, double> get mockRates => _mockRates;
 
+  /// Returns the timestamp of the last successful live sync, if any.
   static DateTime? get lastSync => _lastSync;
 
   // --------------- internal helpers ---------------
 
+  /// Builds a deterministic mock rate table based on [_allCodes].
+  ///
+  /// Sorted alphabetically and then assigned incremental values:
+  /// 1.00, 1.01, 1.02, ...
   static Map<String, double> _buildMockRates() {
     final sorted = _allCodes.toList()..sort();
     final map = <String, double>{};
@@ -397,17 +436,26 @@ class CurrencyRepository {
 
   // --------------- public API ---------------
 
+  /// Loads the last sync timestamp from persistent storage.
+  ///
+  /// Should be called on app startup or before displaying sync info.
   static Future<void> loadLastSync() async {
     _lastSync = await SettingsManager.loadLastSync();
   }
 
-  /// Returns either mock or live rates, depending on useMock.
+  /// Returns either mock or live rates, depending on [useMock].
+  ///
+  /// - When [useMock] is `true`, returns [_mockRates].
+  /// - When [useMock] is `false`, returns [_liveRates] if present,
+  ///   otherwise falls back to [_mockRates].
   static Map<String, double> getRates(bool useMock) {
     if (useMock) return _mockRates;
     return _liveRates ?? _mockRates;
   }
 
   /// Returns all currency codes for the currently available rates.
+  ///
+  /// The result is sorted alphabetically for stable UI presentation.
   static List<String> getCurrencyCodes(bool useMock) {
     final rates = getRates(useMock);
     final codes = rates.keys.toList()..sort();
@@ -415,10 +463,17 @@ class CurrencyRepository {
   }
 
   /// Fetches latest live rates from the API and updates internal state.
+  ///
+  /// - Updates [_liveRates] with fresh data.
+  /// - Extends [_allCodes] and regenerates [_mockRates] so that
+  ///   mock mode stays in sync with new currencies.
+  /// - Stores [_lastSync] via [SettingsManager.saveLastSync].
+  ///
+  /// Returns the fetched live rate map.
   static Future<Map<String, double>> syncLiveRates() async {
     final fetched = await ExchangeRatesService.fetchLatestRates();
 
-    // track all codes we've seen
+    // Track all codes we've seen from the API.
     _allCodes.addAll(fetched.keys);
 
     _liveRates = fetched;
@@ -430,11 +485,16 @@ class CurrencyRepository {
     return fetched;
   }
 
-  /// Fetches historical cross rates for [base] -> [quote] for the last [days] days.
+  /// Fetches historical cross rates for [base] → [quote] for the last [days] days.
   ///
-  /// - If mock mode is enabled, returns synthetic data based on mock rates
-  ///   (no network calls).
-  /// - If live mode is enabled, uses the exchangeratesapi.io historical endpoint.
+  /// Behaviour:
+  /// - If mock mode is enabled, returns synthetic data derived from mock rates
+  ///   without any network calls.
+  /// - If live mode is enabled, delegates to the exchangeratesapi.io
+  ///   historical endpoint via [ExchangeRatesService.fetchHistoricalRates].
+  ///
+  /// Throws:
+  /// - [ArgumentError] when [days] is less than 1.
   static Future<List<HistoryPoint>> fetchHistoricalRates({
     required String base,
     required String quote,
@@ -446,7 +506,7 @@ class CurrencyRepository {
 
     final useMock = await SettingsManager.loadUseMockRates();
 
-    // MOCK MODE → generate simple synthetic history
+    // MOCK MODE → generate simple synthetic history.
     if (useMock) {
       final rates = getRates(true);
       final baseRate = rates[base] ?? 1.0;
@@ -458,7 +518,7 @@ class CurrencyRepository {
 
       final result = <HistoryPoint>[];
 
-      // create slight variation for mock days
+      // Create slight variation for each mock day around the center.
       for (int i = days - 1; i >= 0; i--) {
         final date = today.subtract(Duration(days: i));
         final centeredIndex = i - (days - 1) / 2;
@@ -470,7 +530,7 @@ class CurrencyRepository {
       return result;
     }
 
-    // LIVE MODE
+    // LIVE MODE → use service historical endpoint.
     final raw = await ExchangeRatesService.fetchHistoricalRates(
       base: base,
       quote: quote,
@@ -485,7 +545,8 @@ class CurrencyRepository {
       final baseRate = dayRates[base];
       final quoteRate = dayRates[quote];
       if (baseRate == null || quoteRate == null) {
-        continue; // skip if missing
+        // Skip days where either base or quote is not present.
+        continue;
       }
       final cross = quoteRate / baseRate;
       result.add(HistoryPoint(date: d, rate: cross));
@@ -494,10 +555,13 @@ class CurrencyRepository {
     return result;
   }
 
+  /// Returns the flag emoji for [code], or a white flag as fallback.
   static String flagFor(String code) {
     return _flags[code] ?? '🏳️';
   }
 
+  /// Returns the human-readable display name for [code], or the code itself
+  /// when no mapping is available.
   static String nameFor(String code) {
     return _names[code] ?? code;
   }

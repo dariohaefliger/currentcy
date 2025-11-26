@@ -1,5 +1,24 @@
+// -----------------------------------------------------------------------------
+// currentcy – ExchangeRates API Info Page
+//
+// This file contains:
+// - [ExchangeRatesInfoPage] explanatory screen
+//
+// Responsibilities:
+// - Explain how to obtain an exchangeratesapi.io API key
+// - Guide the user through setting up the key in the app
+// - Provide basic troubleshooting tips
+// -----------------------------------------------------------------------------
+
 import 'package:flutter/material.dart';
 
+/// Static information page explaining how to set up ExchangeRates API.
+///
+/// Shown from the Settings screen to guide users through:
+/// - creating an account
+/// - locating their API key
+/// - entering it into the app
+/// - disabling mock mode and synchronizing rates
 class ExchangeRatesInfoPage extends StatelessWidget {
   const ExchangeRatesInfoPage({super.key});
 
@@ -10,12 +29,14 @@ class ExchangeRatesInfoPage extends StatelessWidget {
         title: const Text('ExchangeRates API'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
+          // Close the info page and go back to the previous screen.
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: const [
+          // ---- Title ----
           Text(
             'How to set up ExchangeRates API',
             style: TextStyle(
@@ -25,6 +46,7 @@ class ExchangeRatesInfoPage extends StatelessWidget {
           ),
           SizedBox(height: 16),
 
+          // ---- Step 1: Create account ----
           Text(
             '1. Create an account',
             style: TextStyle(
@@ -41,6 +63,7 @@ class ExchangeRatesInfoPage extends StatelessWidget {
 
           SizedBox(height: 16),
 
+          // ---- Step 2: Find API key ----
           Text(
             '2. Find your API key',
             style: TextStyle(
@@ -56,6 +79,7 @@ class ExchangeRatesInfoPage extends StatelessWidget {
 
           SizedBox(height: 16),
 
+          // ---- Step 3: Enter key in app ----
           Text(
             '3. Enter the API key in this app',
             style: TextStyle(
@@ -73,6 +97,7 @@ class ExchangeRatesInfoPage extends StatelessWidget {
 
           SizedBox(height: 16),
 
+          // ---- Step 4: Disable mock mode ----
           Text(
             '4. Disable mock mode',
             style: TextStyle(
@@ -88,6 +113,7 @@ class ExchangeRatesInfoPage extends StatelessWidget {
 
           SizedBox(height: 16),
 
+          // ---- Step 5: Synchronize ----
           Text(
             '5. Synchronize rates',
             style: TextStyle(
@@ -104,6 +130,7 @@ class ExchangeRatesInfoPage extends StatelessWidget {
 
           SizedBox(height: 24),
 
+          // ---- Troubleshooting ----
           Text(
             'Troubleshooting',
             style: TextStyle(

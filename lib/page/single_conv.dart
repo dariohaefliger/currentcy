@@ -1,7 +1,27 @@
+// -----------------------------------------------------------------------------
+// currentcy – Single Conversion Screen
+//
+// This file contains:
+// - The [SingleConv] widget (stateful)
+// - UI and logic for converting between two currencies
+// - Currency picker with favorites and search
+// - Synchronization trigger for live exchange rates
+//
+// Responsibilities:
+// - Load rates and user settings (mock mode, favorites)
+// - Perform one-direction currency conversion (left -> right)
+// - Allow changing currencies via a searchable bottom sheet
+// - Show last synchronization status and sync action
+// -----------------------------------------------------------------------------
+
 import 'package:flutter/material.dart';
 import 'package:currentcy/services/currency_repository.dart';
 import 'package:currentcy/settings/settings_manager.dart';
 
+/// Single currency conversion screen.
+///
+/// Allows the user to enter an amount in the "from" currency and see
+/// the converted amount in the "to" currency using the current rates.
 class SingleConv extends StatefulWidget {
   const SingleConv({super.key});
 
@@ -10,32 +30,54 @@ class SingleConv extends StatefulWidget {
 }
 
 class _SingleConvState extends State<SingleConv> {
+  /// Text controller for the input (left) amount.
   final TextEditingController fromController =
       TextEditingController(text: '12.50');
+
+  /// Text controller for the output (right) amount.
   final TextEditingController toController =
       TextEditingController(text: '13.38');
 
+  /// Currently loaded exchange rates mapped by currency code.
   Map<String, double> _rates = {};
+
+  /// All available currency codes for selection.
   List<String> _currencyOptions = [];
 
-  // favourites (codes) for the picker
+  /// List of user favorite currencies (subset of [_currencyOptions]).
   List<String> _favoriteCurrencies = [];
 
+  /// Currently selected "from" currency code.
   String fromCurrency = 'CHF';
+
+  /// Currently selected "to" currency code.
   String toCurrency = 'EUR';
 
+  /// True while a live synchronization is in progress.
   bool _isSyncing = false;
+
+  /// Whether mock rates are being used instead of live data.
   bool _useMockRates = true;
+
+  /// Whether initial settings and rates are still loading.
   bool _isLoading = true;
+
+  /// Timestamp of the last successful synchronization (live data).
   DateTime? _lastSync;
 
   @override
   void initState() {
     super.initState();
+    // Whenever the input amount changes, recalculate the converted value.
     fromController.addListener(_onFromAmountChanged);
     _initSettingsAndRates();
   }
 
+  /// Loads settings and initial rates, then prepares the UI state.
+  ///
+  /// - Reads `useMockRates` from settings.
+  /// - Loads last sync timestamp and rates from [CurrencyRepository].
+  /// - Validates and normalizes favorites and current from/to currencies.
   Future<void> _initSettingsAndRates() async {
     final useMock = await SettingsManager.loadUseMockRates();
     await CurrencyRepository.loadLastSync();
@@ -43,14 +85,14 @@ class _SingleConvState extends State<SingleConv> {
     final rates = CurrencyRepository.getRates(useMock);
     final options = CurrencyRepository.getCurrencyCodes(useMock);
 
-    // load favourites
+    // Load favorites and keep only those that exist in the current options.
     final favs = await SettingsManager.loadFavoriteCurrencies();
-    final validFavs =
-        favs.where((c) => options.contains(c)).toList();
+    final validFavs = favs.where((c) => options.contains(c)).toList();
 
     String newFrom = fromCurrency;
     String newTo = toCurrency;
 
+    // Fallback to first available currencies if the stored ones are invalid.
     if (!options.contains(newFrom) && options.isNotEmpty) {
       newFrom = options.first;
     }
@@ -80,10 +122,10 @@ class _SingleConvState extends State<SingleConv> {
     super.dispose();
   }
 
-  // --------------------------
-  // CONVERSION
-  // --------------------------
-
+  /// Handles changes in the "from" amount and updates the "to" amount.
+  ///
+  /// - Accepts both comma and dot as decimal separators.
+  /// - Clears the output if the input cannot be parsed.
   void _onFromAmountChanged() {
     final text = fromController.text.replaceAll(',', '.');
     final value = double.tryParse(text);
@@ -98,12 +140,19 @@ class _SingleConvState extends State<SingleConv> {
     toController.text = converted.toStringAsFixed(2);
   }
 
+  /// Returns the conversion rate between [from] and [to].
+  ///
+  /// If a rate is missing, it falls back to 1.0 for that currency.
+  /// The returned value represents: 1 [from] = X [to].
   double _getRate(String from, String to) {
     final fromRate = _rates[from] ?? 1.0;
     final toRate = _rates[to] ?? 1.0;
     return toRate / fromRate;
   }
 
+  /// Swaps the "from" and "to" currencies and their respective amounts.
+  ///
+  /// After swapping, the conversion is recalculated to ensure consistency.
   void _swapCurrencies() {
     setState(() {
       final oldFrom = fromCurrency;
@@ -118,10 +167,11 @@ class _SingleConvState extends State<SingleConv> {
     _onFromAmountChanged();
   }
 
-  // --------------------------
-  // SYNC
-  // --------------------------
-
+  /// Handles tap on the "synchronize now" button.
+  ///
+  /// - Shows an info message when mock mode is active.
+  /// - Otherwise, triggers a live rates sync via [CurrencyRepository.syncLiveRates].
+  /// - Updates available currency options and last sync timestamp.
   Future<void> _onSynchronizePressed() async {
     if (_useMockRates) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -140,6 +190,7 @@ class _SingleConvState extends State<SingleConv> {
       final newRates = await CurrencyRepository.syncLiveRates();
       final options = CurrencyRepository.getCurrencyCodes(false);
 
+      // Ensure selected currencies remain valid after sync.
       if (!options.contains(fromCurrency)) {
         fromCurrency = options.first;
       }
@@ -173,10 +224,12 @@ class _SingleConvState extends State<SingleConv> {
     }
   }
 
-  // --------------------------
-  // SEARCHABLE PICKER
-  // --------------------------
-
+  /// Opens a modal bottom sheet to choose a currency.
+  ///
+  /// - Displays favorites at the top, followed by all other currencies.
+  /// - Provides a search field for code and name.
+  /// - When a currency is selected, updates either [fromCurrency] or
+  ///   [toCurrency] depending on [isFrom].
   Future<void> _showCurrencyPicker({required bool isFrom}) async {
     if (_currencyOptions.isEmpty) return;
 
@@ -187,7 +240,7 @@ class _SingleConvState extends State<SingleConv> {
       builder: (ctx) {
         final searchController = TextEditingController();
 
-        // base lists
+        // Prepare base lists for favorites and other currencies.
         List<String> favBase = _favoriteCurrencies
             .where((c) => _currencyOptions.contains(c))
             .toList();
@@ -195,7 +248,7 @@ class _SingleConvState extends State<SingleConv> {
             .where((c) => !favBase.contains(c))
             .toList();
 
-        // filtered lists
+        // These lists will be filtered in-place by the search logic.
         List<String> favFiltered = List.of(favBase);
         List<String> othersFiltered = List.of(othersBase);
 
@@ -212,14 +265,12 @@ class _SingleConvState extends State<SingleConv> {
                   name.contains(query);
             }
 
-            favFiltered =
-                favBase.where(matches).toList();
-            othersFiltered =
-                othersBase.where(matches).toList();
+            favFiltered = favBase.where(matches).toList();
+            othersFiltered = othersBase.where(matches).toList();
           }
         }
 
-        // initial state without filter
+        // Initial filter with empty query.
         applyFilter('');
 
         return Align(
@@ -243,22 +294,28 @@ class _SingleConvState extends State<SingleConv> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Grabber
+                        // Drag handle.
                         Container(
                           width: 40,
                           height: 4,
                           margin: const EdgeInsets.only(
-                              top: 8, bottom: 12),
+                            top: 8,
+                            bottom: 12,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.grey[400],
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
 
-                        // Search field
+                        // Search field.
                         Padding(
                           padding: const EdgeInsets.fromLTRB(
-                              16, 0, 16, 8),
+                            16,
+                            0,
+                            16,
+                            8,
+                          ),
                           child: TextField(
                             controller: searchController,
                             decoration: const InputDecoration(
@@ -267,7 +324,8 @@ class _SingleConvState extends State<SingleConv> {
                                   'Search currency (code or name)',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.all(
-                                    Radius.circular(12)),
+                                  Radius.circular(12),
+                                ),
                               ),
                             ),
                             onChanged: (value) {
@@ -278,7 +336,7 @@ class _SingleConvState extends State<SingleConv> {
                           ),
                         ),
 
-                        // Favs + Divider + Others as one list
+                        // List of favorites and all other currencies.
                         Flexible(
                           child: ListView(
                             shrinkWrap: true,
@@ -293,7 +351,8 @@ class _SingleConvState extends State<SingleConv> {
                                     leading: Text(
                                       flag,
                                       style: const TextStyle(
-                                          fontSize: 28),
+                                        fontSize: 28,
+                                      ),
                                     ),
                                     title: Text(name),
                                     subtitle: Text(code),
@@ -304,8 +363,7 @@ class _SingleConvState extends State<SingleConv> {
                                       ),
                                     ),
                                     onTap: () =>
-                                        Navigator.of(context)
-                                            .pop(code),
+                                        Navigator.of(context).pop(code),
                                   );
                                 }),
                                 const Divider(),
@@ -319,13 +377,13 @@ class _SingleConvState extends State<SingleConv> {
                                   leading: Text(
                                     flag,
                                     style: const TextStyle(
-                                        fontSize: 28),
+                                      fontSize: 28,
+                                    ),
                                   ),
                                   title: Text(name),
                                   subtitle: Text(code),
                                   onTap: () =>
-                                      Navigator.of(context)
-                                          .pop(code),
+                                      Navigator.of(context).pop(code),
                                 );
                               }),
                             ],
@@ -354,10 +412,9 @@ class _SingleConvState extends State<SingleConv> {
     }
   }
 
-  // --------------------------
-  // UI HELPERS
-  // --------------------------
-
+  /// Shows an info message when the user taps on the right (output) field.
+  ///
+  /// The right box is read-only, so this guides the user to edit the left box.
   void _onRightButtonPressed() {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -367,6 +424,12 @@ class _SingleConvState extends State<SingleConv> {
     );
   }
 
+  /// Builds user-facing text describing the last synchronization state.
+  ///
+  /// Handles:
+  /// - Mock mode notice
+  /// - "never synchronized" case
+  /// - Human-readable timestamp of the last sync
   String _formatLastSyncText() {
     if (_useMockRates) {
       return 'Mock mode is enabled. Go to Settings to disable it and fetch live exchange rates.';
@@ -386,6 +449,7 @@ class _SingleConvState extends State<SingleConv> {
 
   @override
   Widget build(BuildContext context) {
+    // Initial loading state while settings and rates are fetched.
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -420,10 +484,10 @@ class _SingleConvState extends State<SingleConv> {
 
             const SizedBox(height: 20),
 
-            // INPUT ROWS
+            // ---- Amount fields row ----
             Row(
               children: [
-                // INPUT LEFT
+                // Left (input) amount.
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -457,7 +521,7 @@ class _SingleConvState extends State<SingleConv> {
                   ),
                 ),
 
-                // SWAP BUTTON
+                // Swap button between fields.
                 Padding(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10.0),
@@ -474,7 +538,7 @@ class _SingleConvState extends State<SingleConv> {
                   ),
                 ),
 
-                // OUTPUT RIGHT
+                // Right (output) amount.
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.symmetric(
@@ -496,7 +560,7 @@ class _SingleConvState extends State<SingleConv> {
                       controller: toController,
                       readOnly: true,
                       onTap: _onRightButtonPressed,
-                      textAlign: TextAlign.right, // <-- rechtsbündig Zahlen
+                      textAlign: TextAlign.right,
                       style: const TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
@@ -512,10 +576,10 @@ class _SingleConvState extends State<SingleConv> {
 
             const SizedBox(height: 12),
 
-            // CURRENCY PICKERS
+            // ---- Currency selection row ----
             Row(
               children: [
-                // FROM currency
+                // From currency selector.
                 Expanded(
                   child: GestureDetector(
                     onTap: () =>
@@ -579,7 +643,7 @@ class _SingleConvState extends State<SingleConv> {
 
                 const SizedBox(width: 12),
 
-                // TO currency
+                // To currency selector.
                 Expanded(
                   child: GestureDetector(
                     onTap: () =>
@@ -650,6 +714,7 @@ class _SingleConvState extends State<SingleConv> {
 
             const SizedBox(height: 50),
 
+            // ---- Rate information ----
             Center(
               child: Text(
                 rateText,
@@ -662,12 +727,14 @@ class _SingleConvState extends State<SingleConv> {
         ),
       ),
 
+      // ---- Bottom sync area ----
       bottomNavigationBar: Container(
         padding:
             const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Synchronize / mock mode button.
             ElevatedButton(
               onPressed:
                   _isSyncing ? null : _onSynchronizePressed,
@@ -710,6 +777,7 @@ class _SingleConvState extends State<SingleConv> {
               ),
             ),
             const SizedBox(height: 8),
+            // Last sync info text.
             Text(
               _formatLastSyncText(),
               textAlign: TextAlign.center,

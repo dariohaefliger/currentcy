@@ -1,3 +1,17 @@
+// -----------------------------------------------------------------------------
+// currentcy – Main Entry Point
+//
+// This file contains:
+// - The application entry point (`main()`)
+// - The root widget `MyApp`
+// - The tab-based home page `MyHomePage` with navigation to Settings
+//
+// Responsibilities:
+// - Initialize the Flutter app
+// - Apply dynamic theme switching via ThemeManager
+// - Provide the main tab navigation (Single, Multi, Charts)
+// -----------------------------------------------------------------------------
+
 import 'package:flutter/material.dart';
 import 'package:currentcy/page/single_conv.dart';
 import 'package:currentcy/page/multi_conv.dart';
@@ -5,10 +19,21 @@ import 'package:currentcy/page/charts_history.dart';
 import 'package:currentcy/settings/settings_main.dart';
 import 'package:currentcy/settings/theme_manager.dart';
 
+/// Application entry point.
+///
+/// Initializes the Flutter app and runs the root widget [MyApp].
 void main() {
   runApp(const MyApp());
 }
 
+/// Root widget of the currentcy application.
+///
+/// Listens to theme changes via [ThemeManager.themeModeNotifier] and rebuilds
+/// the [MaterialApp] accordingly.
+///
+/// Provides:
+/// - App theming (light/dark)
+/// - Root navigation
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -20,13 +45,19 @@ class MyApp extends StatelessWidget {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: 'Currentcy',
+
+          // Apply theme mode from ThemeManager.
           themeMode: mode,
+
+          // Light theme configuration.
           theme: ThemeData.from(
             colorScheme: ColorScheme.fromSeed(
               seedColor: Colors.white,
               brightness: Brightness.light,
             ),
           ),
+
+          // Dark theme configuration.
           darkTheme: ThemeData.from(
             colorScheme: ColorScheme.fromSeed(
               seedColor: Colors.white,
@@ -34,6 +65,7 @@ class MyApp extends StatelessWidget {
             ),
           ),
 
+          // Main home page with tab navigation.
           home: MyHomePage(
             title: Image.asset(
               'images/Currentcy-Logo_ohne_Hintergrund.png',
@@ -46,9 +78,18 @@ class MyApp extends StatelessWidget {
   }
 }
 
+/// Home page containing the top-level tab navigation.
+///
+/// Displays three primary features:
+/// - Single currency converter
+/// - Multi currency converter
+/// - Historical charts
+///
+/// A settings icon in the app bar navigates to the settings page.
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key, required this.title});
 
+  /// Widget displayed as the app bar title (logo in this case).
   final Widget title;
 
   @override
@@ -63,9 +104,12 @@ class _MyHomePageState extends State<MyHomePage> {
           appBar: AppBar(
             title: widget.title,
             centerTitle: false,
+
+            // ---- Settings button ----
             actions: [
               IconButton(
                 onPressed: () {
+                  // Navigate to Settings with a slide transition from the right.
                   Navigator.push(
                     context,
                     PageRouteBuilder(
@@ -81,10 +125,9 @@ class _MyHomePageState extends State<MyHomePage> {
                           begin: begin,
                           end: end,
                         ).chain(CurveTween(curve: curve));
-                        final offsetAnimation = animation.drive(tween);
 
                         return SlideTransition(
-                          position: offsetAnimation,
+                          position: animation.drive(tween),
                           child: child,
                         );
                       },
@@ -98,6 +141,8 @@ class _MyHomePageState extends State<MyHomePage> {
                 ),
               ),
             ],
+
+            // ---- Tab Buttons ----
             bottom: const TabBar(
               tabs: [
                 Tab(text: 'Single-Conv.', icon: Icon(Icons.currency_bitcoin)),
@@ -106,8 +151,14 @@ class _MyHomePageState extends State<MyHomePage> {
               ],
             ),
           ),
+
+          // ---- Tab Content ----
           body: const TabBarView(
-            children: [SingleConv(), MultiConv(), ChartsHistory()],
+            children: [
+              SingleConv(),
+              MultiConv(),
+              ChartsHistory(),
+            ],
           ),
         ),
       );

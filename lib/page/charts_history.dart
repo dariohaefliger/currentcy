@@ -1,7 +1,27 @@
+// -----------------------------------------------------------------------------
+// currentcy – Charts & History Screen
+//
+// This file contains:
+// - The [ChartsHistory] widget (stateful)
+// - Logic for loading and displaying historical exchange rates
+// - Currency picker with favourites and search
+// - A custom-painted line chart for the last 5 days
+//
+// Responsibilities:
+// - Load settings (mock mode, premium plan, favourites)
+// - Fetch historical rate data (live or mock)
+// - Let users pick base and quote currencies
+// - Render a lightweight custom chart for the selected pair
+// -----------------------------------------------------------------------------
+
 import 'package:flutter/material.dart';
 import 'package:currentcy/services/currency_repository.dart';
 import 'package:currentcy/settings/settings_manager.dart';
 
+/// Charts & history screen.
+///
+/// Shows the last 5 days of exchange rate changes between a base and quote
+/// currency, using either mock or live historical data depending on settings.
 class ChartsHistory extends StatefulWidget {
   const ChartsHistory({super.key});
 
@@ -10,19 +30,34 @@ class ChartsHistory extends StatefulWidget {
 }
 
 class _ChartsHistoryState extends State<ChartsHistory> {
+  /// Base currency code for the chart (left side).
   String _base = 'CHF';
+
+  /// Quote currency code for the chart (right side).
   String _quote = 'EUR';
 
+  /// True while initial setup or history loading is in progress.
   bool _isLoading = true;
+
+  /// True while a live synchronization is in progress.
   bool _isSyncing = false;
+
+  /// Whether mock rates are being used instead of live data.
   bool _useMockRates = true;
+
+  /// Whether the user has a Professional/Business plan for live history.
   bool _hasPremiumPlan = false;
 
+  /// Historical points for the currently selected currency pair.
   List<HistoryPoint> _points = [];
+
+  /// All available currency codes for selection.
   List<String> _currencyOptions = [];
 
+  /// Favourite currency codes used to highlight options in the picker.
   List<String> _favoriteCurrencies = [];
 
+  /// Error message shown when loading history fails.
   String? _error;
 
   @override
@@ -31,6 +66,12 @@ class _ChartsHistoryState extends State<ChartsHistory> {
     _initPage();
   }
 
+  /// Initializes page state based on settings and available currencies.
+  ///
+  /// - Loads `useMockRates` and `hasPremiumPlan` from settings.
+  /// - Loads all available currencies from [CurrencyRepository].
+  /// - Normalizes base/quote currencies and favourites.
+  /// - Starts history loading when allowed by settings.
   Future<void> _initPage() async {
     final useMock = await SettingsManager.loadUseMockRates();
     final hasPremium = await SettingsManager.loadHasPremiumPlan();
@@ -48,11 +89,12 @@ class _ChartsHistoryState extends State<ChartsHistory> {
       return;
     }
 
-    // load favourites
+    // Load favourites and keep only valid codes.
     final favs = await SettingsManager.loadFavoriteCurrencies();
     final validFavs =
         favs.where((c) => _currencyOptions.contains(c)).toList();
 
+    // Ensure base and quote currencies are valid.
     if (!_currencyOptions.contains(_base)) {
       _base = _currencyOptions.first;
     }
@@ -66,7 +108,7 @@ class _ChartsHistoryState extends State<ChartsHistory> {
       _favoriteCurrencies = validFavs;
     });
 
-    // doesn't load if mock or not premium plan
+    // Do not load live history if live mode is on but no premium plan is available.
     if (!_useMockRates && !_hasPremiumPlan) {
       setState(() {
         _isLoading = false;
@@ -78,6 +120,10 @@ class _ChartsHistoryState extends State<ChartsHistory> {
     await _loadHistory();
   }
 
+  /// Loads historical rates for the current [_base]/[_quote] pair.
+  ///
+  /// Uses [CurrencyRepository.fetchHistoricalRates] to fetch the last 5 days.
+  /// Sets [_points], [_isLoading] and [_error] accordingly.
   Future<void> _loadHistory() async {
     setState(() {
       _isLoading = true;
@@ -104,9 +150,15 @@ class _ChartsHistoryState extends State<ChartsHistory> {
     }
   }
 
+  /// Handles tap on the "synchronize now" button.
+  ///
+  /// - Returns early if live mode is disabled or no premium plan is active.
+  /// - In live mode, syncs rates and reloads history.
   Future<void> _onSyncPressed() async {
+    // Only relevant when live mode is active and user has premium.
     if (!_useMockRates && !_hasPremiumPlan) return;
 
+    // In mock mode there is nothing to sync.
     if (_useMockRates) {
       return;
     }
@@ -140,6 +192,11 @@ class _ChartsHistoryState extends State<ChartsHistory> {
   // SEARCHABLE PICKER
   // --------------------------
 
+  /// Opens a modal bottom sheet to pick a currency.
+  ///
+  /// - Displays favourites at the top, followed by all other currencies.
+  /// - Provides a search field for code and name.
+  /// - Returns the selected code, or `null` if the sheet was dismissed.
   Future<String?> _pickCurrency(String current) async {
     if (_currencyOptions.isEmpty) return null;
 
@@ -150,7 +207,7 @@ class _ChartsHistoryState extends State<ChartsHistory> {
       builder: (ctx) {
         final searchController = TextEditingController();
 
-        // Base-Listen
+        // Base lists for favourites and other currencies.
         List<String> favBase = _favoriteCurrencies
             .where((c) => _currencyOptions.contains(c))
             .toList();
@@ -158,7 +215,7 @@ class _ChartsHistoryState extends State<ChartsHistory> {
             .where((c) => !favBase.contains(c))
             .toList();
 
-        // Gefilterte Listen
+        // Filtered lists updated by search.
         List<String> favFiltered = List.of(favBase);
         List<String> othersFiltered = List.of(othersBase);
 
@@ -180,7 +237,7 @@ class _ChartsHistoryState extends State<ChartsHistory> {
           }
         }
 
-        // initial without filter
+        // Initial state: no filter.
         applyFilter('');
 
         return Align(
@@ -204,7 +261,7 @@ class _ChartsHistoryState extends State<ChartsHistory> {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Grabber
+                        // Drag handle.
                         Container(
                           width: 40,
                           height: 4,
@@ -216,7 +273,7 @@ class _ChartsHistoryState extends State<ChartsHistory> {
                           ),
                         ),
 
-                        // search
+                        // Search field.
                         Padding(
                           padding: const EdgeInsets.fromLTRB(
                               16, 0, 16, 8),
@@ -239,7 +296,7 @@ class _ChartsHistoryState extends State<ChartsHistory> {
                           ),
                         ),
 
-                        // Favs + Divider + Others
+                        // Favourites + Divider + Others
                         Flexible(
                           child: ListView(
                             shrinkWrap: true,
@@ -304,6 +361,7 @@ class _ChartsHistoryState extends State<ChartsHistory> {
     );
   }
 
+  /// Returns the latest rate from [_points], if available.
   double? get _latestRate =>
       _points.isNotEmpty ? _points.last.rate : null;
 
@@ -334,7 +392,7 @@ class _ChartsHistoryState extends State<ChartsHistory> {
 
             const SizedBox(height: 20),
 
-            // Currency selectors
+            // Currency selectors (base & quote).
             Row(
               children: [
                 Expanded(
@@ -379,6 +437,7 @@ class _ChartsHistoryState extends State<ChartsHistory> {
 
             const SizedBox(height: 16),
 
+            // Main chart area / info / error states.
             Expanded(
               child: _buildChartArea(),
             ),
@@ -386,7 +445,7 @@ class _ChartsHistoryState extends State<ChartsHistory> {
         ),
       ),
 
-      // Footer with Sync button
+      // Footer with Sync button and info text.
       bottomNavigationBar: Container(
         padding:
             const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
@@ -459,9 +518,17 @@ class _ChartsHistoryState extends State<ChartsHistory> {
     );
   }
 
+  /// Builds the main chart area, including info & error states.
+  ///
+  /// Handles these cases:
+  /// - Live mode without premium: info message instead of chart.
+  /// - Loading: progress indicator.
+  /// - Error: error text with retry button.
+  /// - No points: guidance text.
+  /// - Normal case: custom history chart.
   Widget _buildChartArea() {
     if (!_useMockRates && !_hasPremiumPlan) {
-      // Live + kein Premium → Info statt Chart
+      // Live mode without premium → show info instead of chart.
       return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
@@ -526,7 +593,10 @@ class _ChartsHistoryState extends State<ChartsHistory> {
     );
   }
 
-  // CURRENCY PICKER
+  /// Builds a currency display box for [code].
+  ///
+  /// Shows flag, code and full name. When [reversed] is true, the flag
+  /// is on the right and text on the left (used for base currency).
   Widget _buildCurrencyBox(String code, {required bool reversed}) {
     final flag = CurrencyRepository.flagFor(code);
     final name = CurrencyRepository.nameFor(code);
@@ -594,6 +664,7 @@ class _ChartsHistoryState extends State<ChartsHistory> {
 // CHART WIDGET
 // -----------------------------
 
+/// Hosts the custom-painted history chart for the provided [points].
 class _HistoryChart extends StatelessWidget {
   final List<HistoryPoint> points;
 
@@ -608,6 +679,14 @@ class _HistoryChart extends StatelessWidget {
   }
 }
 
+/// Custom painter for the historical line chart.
+///
+/// Draws:
+/// - Axes
+/// - Line connecting all historical points
+/// - Dots for each day
+/// - Min/max labels on Y-axis
+/// - Date labels (dd.MM) on X-axis
 class _HistoryChartPainter extends CustomPainter {
   final List<HistoryPoint> points;
 
@@ -617,15 +696,18 @@ class _HistoryChartPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (points.isEmpty) return;
 
+    // Axis style.
     final paintAxis = Paint()
       ..color = const Color(0xFFBDBDBD)
       ..strokeWidth = 1;
 
+    // Line style for the history curve.
     final paintLine = Paint()
       ..color = const Color(0xFF3F51B5)
       ..strokeWidth = 2
       ..style = PaintingStyle.stroke;
 
+    // Dot style for each data point.
     final paintDot = Paint()
       ..color = const Color(0xFF3F51B5)
       ..style = PaintingStyle.fill;
@@ -640,6 +722,7 @@ class _HistoryChartPainter extends CustomPainter {
     final chartHeight =
         size.height - paddingTop - paddingBottom;
 
+    // Determine min/max rate for Y scaling.
     double minRate = points.first.rate;
     double maxRate = points.first.rate;
     for (final p in points) {
@@ -647,6 +730,7 @@ class _HistoryChartPainter extends CustomPainter {
       if (p.rate > maxRate) maxRate = p.rate;
     }
 
+    // Avoid division by ~0 when rates are effectively flat.
     if ((maxRate - minRate).abs() < 1e-6) {
       maxRate += 0.001;
       minRate -= 0.001;
@@ -656,6 +740,7 @@ class _HistoryChartPainter extends CustomPainter {
     final double xStep =
         points.length > 1 ? chartWidth / (points.length - 1) : chartWidth;
 
+    // Maps a [HistoryPoint] to a chart [Offset].
     Offset pointFor(int index, HistoryPoint p) {
       final x = paddingLeft + index * xStep;
       final norm = (p.rate - minRate) / yRange; // 0..1
@@ -663,7 +748,7 @@ class _HistoryChartPainter extends CustomPainter {
       return Offset(x, y);
     }
 
-    // Achsen
+    // Axes.
     final axisBottom = Offset(
       paddingLeft,
       size.height - paddingBottom,
@@ -681,7 +766,7 @@ class _HistoryChartPainter extends CustomPainter {
     canvas.drawLine(axisBottom, axisBottomEnd, paintAxis);
     canvas.drawLine(axisLeft, axisLeftEnd, paintAxis);
 
-    // Linie
+    // Line connecting all points.
     final path = Path();
     for (int i = 0; i < points.length; i++) {
       final pt = pointFor(i, points[i]);
@@ -693,13 +778,13 @@ class _HistoryChartPainter extends CustomPainter {
     }
     canvas.drawPath(path, paintLine);
 
-    // Punkte
+    // Dots on each point.
     for (int i = 0; i < points.length; i++) {
       final pt = pointFor(i, points[i]);
       canvas.drawCircle(pt, 3, paintDot);
     }
 
-    // Text-Helper
+    // Helper for axis labels.
     final textPainter = TextPainter(
       textAlign: TextAlign.right,
       textDirection: TextDirection.ltr,
@@ -721,7 +806,7 @@ class _HistoryChartPainter extends CustomPainter {
       textPainter.paint(canvas, offset);
     }
 
-    // y-Achse min/max
+    // Y-axis min/max labels.
     drawYLabel(
       minRate,
       Offset(paddingLeft, size.height - paddingBottom),
@@ -731,7 +816,7 @@ class _HistoryChartPainter extends CustomPainter {
       Offset(paddingLeft, paddingTop),
     );
 
-    // x-Achse Datum (dd.MM)
+    // X-axis date labels (dd.MM).
     for (int i = 0; i < points.length; i++) {
       final pt = pointFor(i, points[i]);
       final d = points[i].date.toLocal();
