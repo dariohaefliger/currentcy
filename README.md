@@ -1,3 +1,5 @@
+<img src="images/currencty_logo_small.png" style="height: 125px; display: block; margin: auto">
+
 # Currentcy — Currency Conversion App  
 [![Flutter](https://img.shields.io/badge/Flutter-3.38-blue?logo=flutter&logoColor=white)]()
 [![Release](https://img.shields.io/badge/Release-1.0.0-success)]()
@@ -51,9 +53,12 @@ Full integration with exchangeratesapi.io
 
 ---
 
-## Screenshots (placeholders)
-
-> Screenshots here
+## Screenshots
+<img src="images/01_single_conversion.jpg" style="height:500px; margin-right: 10px">
+<img src="images/02_multi_conversion.jpg" style="height:500px; margin-right: 10px">
+<img src="images/03_charts.jpg" style="height:500px; margin-right: 10px">
+<img src="images/04_settings.jpg" style="height:500px; margin-right: 10px">
+<img src="images/05_currency_picker.jpg" style="height:500px">
 
 
 ---
@@ -87,7 +92,7 @@ flutter run
 
 ## Adding Your API Key
 1. Open the Settings screen.
-2. Enter your exchangeratesapi.io API key ande save it.
+2. Enter your exchangeratesapi.io API key and save it.
 3. Disable "Use mock rates".
 4. (Optional) Enable "Professional / Business plan" toggle if you have such a (exchangerateapi.io) subscription.
 
